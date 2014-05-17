@@ -1,3 +1,4 @@
+```
 Command line parameters: 
     Input:
        -i [input file] (required) 
@@ -50,7 +51,7 @@ Command line parameters:
     Help:
        --help help
        --version version information
-
+```
 
 FILE INPUT
 
