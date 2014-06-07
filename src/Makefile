@@ -3,8 +3,8 @@ DEBUG = -O3
 OPTS = ${DEBUG} -Wall -std=c++0x -lpthread
 all: TEST SCOPE++
 
-SCOPE++: build_ghmm.o SCOPA.o Viterbi.o
-	${CC} -o SCOPE++ build_ghmm.o SCOPA.o Viterbi.o ${OPTS} 
+SCOPE++: build_ghmm.o SCOPE.o Viterbi.o
+	${CC} -o SCOPE++ build_ghmm.o SCOPE.o Viterbi.o ${OPTS} 
 
 TEST: test.cpp build_ghmm.o Viterbi.o
 	${CC} -o TEST test.cpp build_ghmm.o Viterbi.o ${OPTS}
@@ -12,8 +12,8 @@ TEST: test.cpp build_ghmm.o Viterbi.o
 build_ghmm.o: build_ghmm.cpp build_ghmm.h
 	${CC} ${OPTS} -c build_ghmm.cpp
 
-SCOPA.o: SCOPA.cpp SCOPA.h build_ghmm.h Viterbi.h
-	${CC} ${OPTS} -c SCOPA.cpp
+SCOPE.o: SCOPE.cpp SCOPE.h build_ghmm.h Viterbi.h
+	${CC} ${OPTS} -c SCOPE.cpp
 
 Viterbi.o: Viterbi.cpp Viterbi.h build_ghmm.h matrix.hh
 	${CC} ${OPTS} -c Viterbi.cpp

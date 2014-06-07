@@ -6,14 +6,14 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
-#include "SCOPA.h"
+#include "SCOPE.h"
 using namespace std;
 
 //#define numTrain 1000
 
 //Global variables
 string seq_file = "";                //FASTA/FASTQ input
-string out_folder= "stats";          //FASTA output
+string out_file= "";          //FASTA output
 string file_type = "illumina";   //File type
 string file_format = "fasta";
 string out_format = "fasta";
@@ -33,32 +33,22 @@ int percentFilter = 65;//The identity filter
 bool zeroBased = false;
 int right_gap = 30;  //Distance from ends to the beginning of the poly(A)/poly(T) tail
 int left_gap = 30;   //Distance from the ends to the end of the poly(A)/poly(T) tail
-//  left gap .... AAAAAAA .... right gap 
-bool doIDPAPT = false;     //Identify poly(A)/poly(T) tails?
+//  left gap .... AAAAAAA .... right gap
+bool identifyTails = false;     //Identify poly(A)/poly(T) tails?
 bool polyFront = false;
 bool polyBack = false;
 bool default_parameters = true; //Determines if default parameters should be used
 bool retrain = true;
-int numThreads = 1;//Careful with this.  Remember that this is called in detect()
+int numThreads = 1;
 int samplingFrequency = 1;
-bool no_sed = false;
+bool mask = false;
 vector<string> trainSeqs;
 vector<string> backTrainSeqs;//background training seqs
 //Files to keep track of stats
 //Basic homopolymer detection
-string stats_folder;
-string poly_file;
-string reject_file;
-//Trimmming stats
-string poly_Afile;
-string polyA_file;
-string poly_Tfile;
-string polyT_file;
-string polyAAfile;
-string polyTTfile;
-string polyATfile;
-string polyTAfile;
-bool doTesting = false;
+
+
+std::mutex filelock;
 
 /*This file contains
 # poly(A) sequences
@@ -84,7 +74,7 @@ string stats_file;
 
 void printArgs(){
 	cout<<"Input file: "<<seq_file<<endl;                //FASTA/FASTQ input
-	cout<<"Output folder: "<<out_folder<<endl;                //FASTA output
+	cout<<"Output file: "<<out_file<<endl;                //FASTA output
 	cout<<"File type: "<<file_type<<endl;   //File type
 	cout<<"Input File Format: "<<file_format<<endl;
 	cout<<"Output File Format: "<<out_format<<endl;
@@ -119,7 +109,7 @@ Command line parameters: \n\
              (default = fasta)\n\
              fasta or fastq\n\
     Output:\n\
-       -o [output folder](required)\n\
+       -o [output file](required)\n\
        --out_format [output file format] \n\
              (default = fasta)\n\
              fasta or fastq\n\
@@ -159,7 +149,6 @@ Command line parameters: \n\
        --right_gap  Distance minLength of end of the poly(A)/poly(T) to read end\n\
        --no_retrain Disables Baum Welch training\n\
        --numThreads\n\
-       --no_sed Disables sed to remove Windows characters\n\
     Help:\n\
        --help help\n\
        --version version information";
@@ -213,7 +202,6 @@ void parse_cmdline(int argc, char** argv){
 				{"no_retrain", no_argument,0,'V'},
 				{"sampling_frequency", required_argument,0,'S'},
 				{"numThreads", required_argument,0,'N'},
-				{"no_sed",no_argument,0,'R'},
 				{"version",  required_argument, 0, 'v'},
 				{"help",    required_argument, 0, 'h'},
 				{"masks",  no_argument, 0, 'j'},
@@ -233,7 +221,7 @@ void parse_cmdline(int argc, char** argv){
 		{
 
 		case 'i':seq_file = optarg;break;
-		case 'o':out_folder = optarg;break;
+		case 'o':out_file = optarg;break;
 		case 's':file_type = optarg;break;
 		case 'f':{
 			file_format = optarg;
@@ -253,7 +241,7 @@ void parse_cmdline(int argc, char** argv){
 		case 'N':{numThreads = atoi(optarg);break;}
 		case 'T':{
 			doTrim = true;
-			doIDPAPT = true;
+			identifyTails = true;
 			default_parameters = false;
 			break;}
 		case 't':{
@@ -265,21 +253,20 @@ void parse_cmdline(int argc, char** argv){
 				cout<<"Unrecognized homopolymer"<<endl;
 				exit(1);}
 			break;}
-		case 'p':doIDPAPT = true;default_parameters = false;break;
+		case 'p':identifyTails = true;default_parameters = false;break;
 		case 'w':filter_width = atoi(optarg);default_parameters = false;break;
 		case 'm':minLength = atoi(optarg);default_parameters = false;break;
 		case 'I':percentFilter = atoi(optarg);default_parameters = false;break;
 		case 'n':numTrain = atoi(optarg);default_parameters = false;break;
-		case 'l':left_gap = atoi(optarg);doIDPAPT = true;default_parameters = false;break;
-		case 'g':right_gap = atoi(optarg);doIDPAPT = true;default_parameters = false;break;
+		case 'l':left_gap = atoi(optarg);identifyTails = true;default_parameters = false;break;
+		case 'g':right_gap = atoi(optarg);identifyTails = true;default_parameters = false;break;
 		case 'k':lapK = atoi(optarg);default_parameters = false;break;
 		case 'b':edgeB = atoi(optarg);default_parameters = false;break;
 		case 'x':numStates = atoi(optarg);default_parameters = false;break;
 		case 'z':zeroBased=true;break;//zeroBased = ((string)optarg=="T");break;
 		case 'S':samplingFrequency=atoi(optarg);break;
 		case 'V':retrain=false;break;
-		case 'j':doTesting = true; doIDPAPT = true;break;
-		case 'R':no_sed = true;break;
+		case 'j':mask = true; identifyTails = true;break;
 		case 'v':
 			printf("%s", vDetails);
 			cout<<endl;
@@ -294,7 +281,7 @@ void parse_cmdline(int argc, char** argv){
 			break;
 		case 'D':
 			seq_file = "test1.fa";
-			out_folder = "test1_out.fa";
+			out_file = "test1_out.fa";
 			printBestAlign = true;
 			polyType = "AT";
 			//file_type = "illumina";
@@ -435,6 +422,12 @@ bool writeFastqBlock(vector<string> s,ostream& o){
 	o<<s[3]<<endl;
 	return 0;
 }
+/*Get the title immediately following the >*/
+std::string getTitle(std::string s){
+	std::stringstream ss;
+	ss<<s;
+	return ss.str();
+}
 
 bool isLower(char s){
 	if((int)s>=97 and (int)s<=122)
@@ -469,36 +462,8 @@ char offset(char s){
 	i = s+32;
 	return i;
 }
-// SCOPA::SCOPA(){
-//   //model =  NULL;
-//   //mle = NULL;
-// }
-bool SCOPA::didConverge(vector<double> a1, vector<double> b1,
-		vector<double> a2, vector<double> b2,
-		vector<double> a3, vector<double> b3,
-		vector<double> a4, vector<double> b4){
 
-	double TOLERANCE = 0.0001;
-	for(int i = 0; i<(int)a1.size(); i++){
-		if(abs(a1[i]-b1[i])>TOLERANCE)
-			return false;
-	}
-	for(int i = 0; i<(int)a2.size(); i++){
-		if(abs(a2[i]-b2[i])>TOLERANCE)
-			return false;
-	}
-	for(int i = 0; i<(int)a3.size(); i++){
-		if(abs(a3[i]-b3[i])>TOLERANCE)
-			return false;
-	}for(int i = 0; i<(int)a4.size(); i++){
-		if(abs(a4[i]-b4[i])>TOLERANCE)
-			return false;
-	}
-	//cout<<"Did converge"<<endl;
-	return true;
-}
-
-bool SCOPA::baumWelchTrain(build_ghmm& model){
+bool SCOPE::baumWelchTrain(build_ghmm& model){
 	Viterbi mle(model.polyA,
 			model.backg,
 			model.tranP,
@@ -525,14 +490,14 @@ bool SCOPA::baumWelchTrain(build_ghmm& model){
 	return doneTraining;
 
 }
-build_ghmm SCOPA::buildHMM(char polymerType){
+build_ghmm SCOPE::buildHMM(char polymerType){
 	//cout<<"Building HMM"<<endl;
 	build_ghmm model("illumina",//file_type,
-			filter_width,
-			polymerType,
-			lapK,
-			edgeB,
-			numStates);
+  					 filter_width,
+					 polymerType,
+					 lapK,
+					 edgeB,
+					 numStates);
 	ifstream fin((char*)seq_file.c_str());
 	int B = 0;//count of background seqs
 	int A = 0;//count of homopolymer seqs
@@ -571,7 +536,7 @@ build_ghmm SCOPA::buildHMM(char polymerType){
 	//   return build_ghmm();
 	// }
 	if(retrain and A>0)
-		while(!SCOPA::baumWelchTrain(model));//Train until convergence
+		while(!SCOPE::baumWelchTrain(model));//Train until convergence
 	trainSeqs.clear();
 	fin.close();
 	fin.clear();
@@ -581,7 +546,7 @@ build_ghmm SCOPA::buildHMM(char polymerType){
 	return model;
 }
 
-string SCOPA::trim(vector<Alignment>& alignment, string obs){
+string SCOPE::trim(vector<Alignment>& alignment, string obs){
 	if(alignment.size()==0)
 		return obs;
 	int start = 0;
@@ -602,9 +567,8 @@ string SCOPA::trim(vector<Alignment>& alignment, string obs){
 
 }
 
-string SCOPA::applyMask(vector<Alignment> alignments,
+string SCOPE::applyMask(vector<Alignment> alignments,
 		string obs){
-
 	int b;
 	int e;
 	string s = obs;
@@ -616,21 +580,7 @@ string SCOPA::applyMask(vector<Alignment> alignments,
 	return s;
 }
 
-vector<Alignment> SCOPA::findBest(vector<Alignment> alignments){
-	if(alignments.size()==0)
-		return alignments;
-	Alignment bestSoFar = alignments[0];
-	//int ind = 0;
-	for(int i = 1 ; i<(int)alignments.size(); i++){
-		if(bestSoFar.score<=alignments[i].score and
-				bestSoFar.identity<=alignments[i].identity){
-			//ind = i;
-			bestSoFar = alignments[i];
-		}
-	}
-	return vector<Alignment>(1,bestSoFar);
-}
-vector<Alignment> SCOPA::viterbiCoord(Viterbi& mle,
+vector<Alignment> SCOPE::viterbiCoord(Viterbi& mle,
 		string s){
 
 	vector<int> bC;
@@ -639,8 +589,6 @@ vector<Alignment> SCOPA::viterbiCoord(Viterbi& mle,
 	//int i = 0;
 	string tmp;
 	string d;
-	//bool endFlag = 0;
-
 
 	//Viterbi algorithm
 	string path = mle.viterbi(s);
@@ -679,68 +627,13 @@ vector<Alignment> SCOPA::viterbiCoord(Viterbi& mle,
 	}
 	return alignments;
 }
-vector<Alignment> SCOPA::viterbiCoord2(build_ghmm* model,
-		string s,
-		string q){
-	vector<int> bC;
-	vector<int> eC;
-	bool isPoly = false;
-	//int i = 0;
-	string tmp;
-	string d;
-	//bool endFlag = 0;
-
-	Viterbi* mle = new Viterbi(model->polyA,
-			model->backg,
-			model->tranP,
-			model->start,
-			minLength,
-			file_type,
-			model->poly_filt[0]);
-	//Viterbi algorithm
-	string path = mle->weightedViterbi(s,q);
-
-	//cout<<s<<endl;
-	//cout<<path<<endl;
-	//cout<<endl;
-
-	int k = 0;
-	while(k<(int)path.length()){
-		if(path[k]=='B'){//Not in polyA
-			if(isPoly==true){
-				eC.push_back(k);
-				isPoly = false;
-			}
-		}
-		else{//In polyA
-			if(isPoly ==false){
-				bC.push_back(k);
-				isPoly = true;
-			}
-		}
-		k++;
-	}
-	if(bC.size()>eC.size()){
-		//if(isPoly==true){
-		eC.push_back(k);}
-	//isPoly = false;
-
-	vector<Alignment> alignments;
-	for(int i = 0; i<(int)bC.size(); i++){
-		Alignment a(s,model->poly_filt[0],
-				bC[i],eC[i],zeroBased);
-		if(a.percentIdentity()>double(percentFilter)/100.0){
-			alignments.push_back(a);
-		}
-	}
-	return alignments;
-}
 
 
 pair<Alignment,Alignment> findBorders(vector<Alignment>& align){
 	//If there are no alignments, return (NULL,NULL)
 	if(align.size()==0){return make_pair(Alignment(),Alignment());}
 	//cout<<"Before ";for(int i = 0 ; i<align.size();i++){cout<<align[i].toString1()<<" ";}cout<<endl;
+
 	/*Sort it so that the first and last homopolymers are the borders*/
 	sort(align.begin(),align.end(),[](Alignment x, Alignment y){return x.start<y.start;});
 	stable_sort(align.begin(),align.end(),[](Alignment x, Alignment y){return x.end<y.end;});
@@ -765,7 +658,8 @@ pair<Alignment,Alignment> findBorders(vector<Alignment>& align){
 	}
 }
 
-void SCOPA::formatSequence(vector<Alignment>& alignments,string s,string q, string& ns, string& nq){
+void SCOPE::formatSequence(vector<Alignment>& alignments,
+		string s,string q, string& ns, string& nq){
 	//string ns,nq;
 	if(doTrim){//If trim, it automatically prints everything
 		ns = trim(alignments,s);
@@ -776,11 +670,11 @@ void SCOPA::formatSequence(vector<Alignment>& alignments,string s,string q, stri
 		ns = applyMask(alignments,s);
 		if(file_format=="fastq"){nq = q;}
 	}
-} 
+}
 
 
-//Assuming poly(A) or poly(T)
-//Assuming that it doesn't have both at once
+/*Assuming poly(A) or poly(T) and that
+  it doesn't have both at once*/
 Alignment findClosest(vector<Alignment> align){
 	//cout<<"Reach the sky"<<endl;
 	//cout<<align.size()<<endl;
@@ -814,7 +708,7 @@ Alignment findClosest(vector<Alignment> align){
 	}
 }
 
-string SCOPA::formatDescription(vector<Alignment>& alignments){
+string SCOPE::formatDescription(vector<Alignment>& alignments){
 	string d = "";
 	if(wantDetails==false){
 		if((alignments.size())!=0)
@@ -830,148 +724,89 @@ string SCOPA::formatDescription(vector<Alignment>& alignments){
 	return d;
 }
 
-void SCOPA::formatAlignments(vector<Alignment>& alignments){
+void SCOPE::formatAlignments(vector<Alignment>& alignments){
 	if(alignments.size()==0 and !printEverything){return;}
 	pair<Alignment,Alignment> p;
-	if(doIDPAPT){
+	if(identifyTails){
 		p = findBorders(alignments);
 		alignments.clear();
 		alignments.push_back(p.first);
 		alignments.push_back(p.second);
-
-	}// else if(printBestAlign)
-	//  alignments = findBest(alignments);
+	}
 }
 
-void SCOPA::printRead(vector<string>& read, string d, string ns, string nq, ostream& out){ 
-
+void SCOPE::printRead(string d, string ns, string nq, ostream& out){
+	std::lock_guard<std::mutex> guard(filelock);
 	vector<string> newRead;
 	if(out_format=="fasta"){
-		newRead = read; newRead[0] = d; newRead[1] = ns;
+		newRead.resize(2);
+		newRead[0] = d; newRead[1] = ns;
 		writeFastaBlock(newRead,out);
 	}else{
-		newRead = read; newRead[0] = d; newRead[1] = ns; newRead[3] = nq;
+		newRead.resize(4);
+		newRead[0] = d; newRead[1] = ns; newRead[3] = nq;
 		writeFastqBlock(newRead,out);
 	}
 }
-
-void cat(ostream& out, vector<string> files){
-	int n = files.size();
-	//ofstream out((char*)outF.c_str());
-	vector<ifstream*> inputs;
-	/*Initialize the files*/
-	for(int i = 0 ; i<n; i++){
-		//cout<<files[i]<<endl;
-		inputs.push_back(new ifstream((char*)files[i].c_str()));
+void SCOPE::printTab(string d, vector<Alignment>& alns, ostream& out, bool isTrash){
+	std::lock_guard<std::mutex> guard(filelock);
+	std::string title = getTitle(d);
+	for(unsigned int i = 0 ; i<alns.size();i++){
+		if(alns[i].isNULL())
+			continue;
+		int start = alns[i].getStart();
+		int end = alns[i].getEnd();
+		std::string ptype = "";
+		if(isTrash)
+			ptype = "trash";
+		else
+			ptype = alns[i].getType();
+		out<<title<<"\t"
+		   <<start<<"\t"
+		   <<end  <<"\t"
+		   <<ptype<<endl;
 	}
-	int i = 0;
-	string tmp;
-	/*Read from files and write back into output file*/
-	ifstream* foo = inputs[i%n];
-	bool reachedEnd = false;
-	vector<string> read;
-	while(!reachedEnd){
-		if(file_format=="fasta"){
-			read = readFastaBlock(*foo);
-			reachedEnd = writeFastaBlock(read,out);
-		}
-		else{
-			read = readFastqBlock(*foo);
-			reachedEnd = writeFastqBlock(read,out);
-		}
-		i+=1;
-		foo = inputs[i%n];
-	}
-	/*Close up the files*/
-	for(int i = 0 ; i<n; i++){
-		inputs[i]->close();
-	}
-	//out.close();
 }
 
-std::mutex filelock;
 //vector<string> readFile(ifstream &f)
 
-bool SCOPA::trash(string ns){
+bool SCOPE::trash(string ns){
 	if((int)ns.size()<trashLength){
 		trashed++;
 		return true;
 	}
 	return false;
 }
-void SCOPA::reject(vector<Alignment>& a,
-		vector<string> read,
-		string d,
-		string ns,
-		string nq,
-		ostream& rejectout){
-	if(a.size()==0){
-		std::lock_guard<std::mutex> guard(filelock);
-		printRead(read,d,ns,nq,rejectout);
-		rejects++;
-	}
-
-}
-
-void SCOPA::storePolyCase(vector<Alignment>& a,
-		vector<string> read,
-		string d,
-		string ns,
-		string nq,
-		ostream& T_out,
-		ostream& _Tout,
-		ostream& A_out,
-		ostream& _Aout,
-		ostream& TTout,
-		ostream& AAout,
-		ostream& TAout,
-		ostream& ATout,
-		ostream& rejectout){
+/*Writes to fasta/fastq*/
+void SCOPE::writeRecord(vector<Alignment>& alns,
+					   string d,
+					   string ns,
+					   string nq,
+					   ostream& fastaout,
+					   ostream& tabout,
+					   bool isTrash){
 	std::lock_guard<std::mutex> guard(filelock);
-	// cout<<d<<endl;
-	// cout<<ns<<endl;
-	// cout<<nq<<endl;
-	// cout<<a[0].polyType<<" "<<a[1].polyType<<endl;
-	if(a.size()==0){
-		printRead(read,d,ns,nq,rejectout); rejects++;
-	}else if(a[0].isNULL() and a[1].polyType=='A'){
-		printRead(read,d,ns,nq,_Aout);     poly_A++;
-	}else if(a[0].isNULL() and a[1].polyType=='T'){
-		printRead(read,d,ns,nq,_Tout);     poly_T++;
-	}else if(a[1].isNULL() and a[0].polyType=='A'){
-		printRead(read,d,ns,nq,A_out);     polyA_++;
-	}else if(a[1].isNULL() and a[0].polyType=='T'){
-		printRead(read,d,ns,nq,T_out);     polyT_++;
-	}else if(a[0].polyType=='T' and a[1].polyType=='T'){
-		printRead(read,d,ns,nq,TTout);     polyTT++;
-	}else if(a[0].polyType=='A' and a[1].polyType=='A'){
-		printRead(read,d,ns,nq,AAout);     polyAA++;
-	}else if(a[0].polyType=='T' and a[1].polyType=='A'){
-		printRead(read,d,ns,nq,TAout);     polyTA++;
-	}else if(a[0].polyType=='A' and a[1].polyType=='T'){
-		printRead(read,d,ns,nq,ATout);     polyAT++;
-	}else{
-		printRead(read,d,ns,nq,rejectout); rejects++;
-	}
-	// printRead(read,d,ns,nq,out);
+	if(alns.size()==0){rejects++;
+	}else if(alns[0].isNULL() and alns[1].polyType=='A'){poly_A++;
+	}else if(alns[0].isNULL() and alns[1].polyType=='T'){poly_T++;
+	}else if(alns[1].isNULL() and alns[0].polyType=='A'){polyA_++;
+	}else if(alns[1].isNULL() and alns[0].polyType=='T'){polyT_++;
+	}else if(alns[0].polyType=='T' and alns[1].polyType=='T'){polyTT++;
+	}else if(alns[0].polyType=='A' and alns[1].polyType=='A'){polyAA++;
+	}else if(alns[0].polyType=='T' and alns[1].polyType=='A'){polyTA++;
+	}else if(alns[0].polyType=='A' and alns[1].polyType=='T'){polyAT++;
+	}else{rejects++;}
+	if(not isTrash)
+		printRead(d,ns,nq,fastaout);
+	printTab(d,alns,tabout,isTrash);
 	totalSeqs++;
 }
-void SCOPA::storepoly(vector<Alignment>& a,
-		vector<string> read,
-		string d,
-		string ns,
-		string nq,
-		ostream& polyout){
-	if(a.size()>0){
-		std::lock_guard<std::mutex> guard(filelock);
-		printRead(read,d,ns,nq,polyout);
-		polys++;
-	}
-}
-void SCOPA::detect(ifstream& f,
-		ostream& polyout,
-		ostream& rejectout,
-		Viterbi & mle){
+
+
+void SCOPE::detect(ifstream& f,
+				   ostream& fastaout,
+				   ostream& tabout,
+				   Viterbi & mle){
 	//bool isPoly = false;
 	//int i = 0;
 	stringstream ss;
@@ -994,7 +829,6 @@ void SCOPA::detect(ifstream& f,
 				d = read[0]; s = read[1]; q = read[3];}
 			////////////////////////////////
 		}
-		//read = readFile(f);
 
 		if(isLower(s[0]))
 			s = toUpper(s);
@@ -1006,51 +840,38 @@ void SCOPA::detect(ifstream& f,
 			alignments.push_back(tmp[j]);}
 		formatAlignments(alignments);
 		formatSequence(alignments,s,q,ns,nq);
-		d+=formatDescription(alignments);
+		//d+=formatDescription(alignments);
 		vector<string> newRead = read;
-		if(SCOPA::trash(ns)){continue;};
-		SCOPA::reject(alignments,
-				read,d,ns,nq,rejectout);
-		SCOPA::storepoly(alignments,
-				read,d,ns,nq,polyout);
-
-		// {//Critical section: shared file access
-		//   //cout<<"Critical Section 2"<<endl;
-		//   std::lock_guard<std::mutex> guard(filelock);
-		//   printRead(read,d,ns,nq);
-		// }//
+		bool isTrash = SCOPE::trash(ns);
+		printTab(d,alignments,tabout,isTrash);
+		if(not isTrash){
+			if(alignments.size()==0){rejects++;}
+			else{polys++;}
+			printRead(d,ns,nq,fastaout);
+		}
 		alignments.clear();
 	}
 }
 
-void SCOPA::trimProcess(ifstream& f,
-		ostream& T_out,
-		ostream& _Tout,
-		ostream& A_out,
-		ostream& _Aout,
-		ostream& TTout,
-		ostream& AAout,
-		ostream& TAout,
-		ostream& ATout,
-		ostream& rejectout,
-		Viterbi & modelA,
-		Viterbi & modelT){
+void SCOPE::trimProcess(ifstream& in,
+						ostream& fastaout,
+						ostream& tabout,
+						Viterbi & modelA,
+						Viterbi & modelT){
 	stringstream ss;
 	vector<string> read;
 	string tmp,s,d,q;
 	bool endFlag = 0;
-	vector<int> bC,eC;
-
 	/*Read from file*/
-	while(!f.eof() and !endFlag){
+	while(!in.eof() and !endFlag){
 		{
 			/*Critical section: file access*/
 			std::lock_guard<std::mutex> guard(filelock);
 			if(file_format=="fasta"){
-				read = readFastaBlock(f);
+				read = readFastaBlock(in);
 				d = read[0]; s = read[1];}
 			else{
-				read = readFastqBlock(f);
+				read = readFastqBlock(in);
 				d = read[0]; s = read[1]; q = read[3];}
 			////////////////////////////////
 		}
@@ -1063,17 +884,17 @@ void SCOPA::trimProcess(ifstream& f,
 		for(int j = 0; j<(int)polyT.size();j++){alignments.push_back(polyT[j]);}
 		formatAlignments(alignments);
 		formatSequence(alignments,s,q,ns,nq);
-		d+=formatDescription(alignments);
+		//d+=formatDescription(alignments);
 		vector<string> newRead = read;
-		if(SCOPA::trash(ns)){continue;};
-		SCOPA::storePolyCase(alignments,
-				read,d,ns,nq,
-				T_out,_Tout,
-				A_out,_Aout,
-				TTout,AAout,
-				TAout,ATout,
-				rejectout);
+
+		bool isTrash = SCOPE::trash(ns);
+		SCOPE::writeRecord(alignments,
+						   d,ns,nq,
+						   fastaout,
+						   tabout,
+						   isTrash);
 		alignments.clear();
+
 	}
 
 
@@ -1088,73 +909,6 @@ std::string getFileName(std::string s){
 	std::string file = s.substr(found_dash+1);
 	return file;
 	//}
-}
-void SCOPA::make_trimmed_folder(){
-	//Initialize stats file variables
-	//string prefix = out;
-	//string prefix = "stats";
-	//string prefix = seq_file.substr(0,seq_file.find("."));
-	string prefix = getFileName(out_folder);
-	stats_folder = out_folder;
-	string sep = "/";
-	poly_Afile = stats_folder+sep+prefix+string(".poly_A");
-	polyA_file = stats_folder+sep+prefix+string(".polyA_");
-	poly_Tfile = stats_folder+sep+prefix+string(".poly_T");
-	polyT_file = stats_folder+sep+prefix+string(".polyT_");
-	polyTAfile = stats_folder+sep+prefix+string(".polyTA");
-	polyATfile = stats_folder+sep+prefix+string(".polyAT");
-	polyTTfile = stats_folder+sep+prefix+string(".polyTT");
-	polyAAfile = stats_folder+sep+prefix+string(".polyAA");
-	reject_file = stats_folder+sep+prefix+string(".reject");
-	int status = mkdir((char*)stats_folder.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-	if(status==-1){
-		const int pid = fork();
-		if(pid==0){
-			char cmd[4] = "rm";
-			char* args[] = {cmd,"-r",(char*)stats_folder.c_str(),NULL};
-			execvp(cmd,args);
-		}
-		else{
-			waitpid(pid,NULL,0);
-			mkdir((char*)stats_folder.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-		}
-	}
-}  
-void SCOPA::make_stats_folder(){
-	//Initialize stats file variables
-	//string prefix = "stats";
-
-	string prefix = getFileName(out_folder);
-	//string prefix = seq_file.substr(0,seq_file.find("."));
-	stats_folder = out_folder;
-	string sep = "/";
-	poly_file = stats_folder+sep+prefix+string(".poly");
-	reject_file = stats_folder+sep+prefix+string(".reject");
-
-	//stats_file = stats_folder+sep+prefix+string(".stat");
-	int status =   mkdir((char*)stats_folder.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-	if(status==-1){
-		const int pid = fork();
-		if(pid==0){
-			char cmd[4] = "rm";
-			char* args[] = {cmd,"-r",(char*)stats_folder.c_str(),NULL};
-			execvp(cmd,args);
-		}
-		else{
-			waitpid(pid,NULL,0);
-			mkdir((char*)stats_folder.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-		}
-	}
-
-	// if(status==-1){
-	//   cout<<"Problem creating stats folder, no statistics will be stored"<<endl;
-	// }
-}
-
-
-void SCOPA::cat_files(){
-	char cmd[4] = "cat";
-
 }
 
 int main(int argc, char** argv){
@@ -1174,45 +928,29 @@ int main(int argc, char** argv){
 
 	if(in->eof())
 		cout<<"Empty input file!!!"<<endl;
-	string test;
 
-	waitpid(pid,NULL,0);
-	if(doTrim){
-		SCOPA::make_trimmed_folder();
+	std::string fastaOutFile = out_file;
+	std::string tabOutFile = fastaOutFile+std::string(".tab");
+	std::ofstream fastaout((char*)fastaOutFile.c_str());
+	std::ofstream tabout((char*)tabOutFile.c_str());
 
-		ofstream poly_Aout((char*)poly_Afile.c_str());
-		ofstream polyA_out((char*)polyA_file.c_str());
-		ofstream poly_Tout((char*)poly_Tfile.c_str());
-		ofstream polyT_out((char*)polyT_file.c_str());
-		ofstream polyATout((char*)polyATfile.c_str());
-		ofstream polyTAout((char*)polyTAfile.c_str());
-		ofstream polyTTout((char*)polyTTfile.c_str());
-		ofstream polyAAout((char*)polyAAfile.c_str());
-		ofstream rejectout((char*)reject_file.c_str());
+	if(doTrim or mask){
 		vector<Viterbi> Amodels;//Make copies for each thread
 		vector<Viterbi> Tmodels;//Make copies for each thread
-		build_ghmm modelT = SCOPA::buildHMM('T');
-		build_ghmm modelA = SCOPA::buildHMM('A');
+		build_ghmm modelT = SCOPE::buildHMM('T');
+		build_ghmm modelA = SCOPE::buildHMM('A');
 		for(int i = 0 ; i<numThreads; i++){
 			Amodels.push_back(Viterbi(modelA.polyA,modelA.backg,modelA.tranP,modelA.start,
 					minLength,file_type,modelA.poly_filt[0]));
 			Tmodels.push_back(Viterbi(modelT.polyA,modelT.backg,modelT.tranP,modelT.start,
 					minLength,file_type,modelT.poly_filt[0]));
 		}
-
 		vector<std::thread> threads;
 		for(int i = 0; i<numThreads; i++){
-			threads.push_back(std::thread(SCOPA::trimProcess,
+			threads.push_back(std::thread(SCOPE::trimProcess,
 					std::ref(*in),
-					std::ref(polyT_out),
-					std::ref(poly_Tout),
-					std::ref(polyA_out),
-					std::ref(poly_Aout),
-					std::ref(polyTTout),
-					std::ref(polyAAout),
-					std::ref(polyTAout),
-					std::ref(polyATout),
-					std::ref(rejectout),
+					std::ref(fastaout),
+					std::ref(tabout),
 					std::ref(Amodels[i]),
 					std::ref(Tmodels[i])));
 		}
@@ -1229,64 +967,8 @@ int main(int argc, char** argv){
 		cout<<"[AAAA.............TTTT]:"<<polyAT<<"\t"<<(polyAT/((double)totalSeqs))*100<<"%"<<endl;
 		cout<<"[No homopolymers detected]: "<<rejects<<endl;
 		cout<<"[Trashed Reads]: "<<trashed<<endl;
-	}
-	else if(doTesting){
-		SCOPA::make_trimmed_folder();
-
-		ofstream poly_Aout((char*)poly_Afile.c_str());
-		ofstream polyA_out((char*)polyA_file.c_str());
-		ofstream poly_Tout((char*)poly_Tfile.c_str());
-		ofstream polyT_out((char*)polyT_file.c_str());
-		ofstream polyATout((char*)polyATfile.c_str());
-		ofstream polyTAout((char*)polyTAfile.c_str());
-		ofstream polyTTout((char*)polyTTfile.c_str());
-		ofstream polyAAout((char*)polyAAfile.c_str());
-		ofstream rejectout((char*)reject_file.c_str());
-		vector<Viterbi> Amodels;//Make copies for each thread
-		vector<Viterbi> Tmodels;//Make copies for each thread
-		build_ghmm modelT = SCOPA::buildHMM('T');
-		build_ghmm modelA = SCOPA::buildHMM('A');
-		for(int i = 0 ; i<numThreads; i++){
-			Amodels.push_back(Viterbi(modelA.polyA,modelA.backg,modelA.tranP,modelA.start,
-					minLength,file_type,modelA.poly_filt[0]));
-			Tmodels.push_back(Viterbi(modelT.polyA,modelT.backg,modelT.tranP,modelT.start,
-					minLength,file_type,modelT.poly_filt[0]));
-		}
-		vector<std::thread> threads;
-		for(int i = 0; i<numThreads; i++){
-			threads.push_back(thread(SCOPA::trimProcess,//Not really a trim process
-					std::ref(*in),
-					std::ref(polyT_out),
-					std::ref(poly_Tout),
-					std::ref(polyA_out),
-					std::ref(poly_Aout),
-					std::ref(polyTTout),
-					std::ref(polyAAout),
-					std::ref(polyTAout),
-					std::ref(polyATout),
-					std::ref(rejectout),
-					std::ref(Amodels[i]),
-					std::ref(Tmodels[i])));
-		}
-		for(int i = 0; i<numThreads; i++){threads[i].join();}
-
-		cout<<"[Total Reads]:"<<totalSeqs<<endl;
-		cout<<"case1 [TTTT.................]:"<<polyT_<<"\t"<<(polyT_/((double)totalSeqs))*100<<"%"<<endl;
-		cout<<"case2 [.................TTTT]:"<<poly_T<<"\t"<<(poly_T/((double)totalSeqs))*100<<"%"<<endl;
-		cout<<"case3 [AAAA.................]:"<<polyA_<<"\t"<<(polyA_/((double)totalSeqs))*100<<"%"<<endl;
-		cout<<"case4 [.................AAAA]:"<<poly_A<<"\t"<<(poly_A/((double)totalSeqs))*100<<"%"<<endl;
-		cout<<"case5 [TTTT.............TTTT]:"<<polyTT<<"\t"<<(polyTT/((double)totalSeqs))*100<<"%"<<endl;
-		cout<<"case6 [AAAA.............AAAA]:"<<polyAA<<"\t"<<(polyAA/((double)totalSeqs))*100<<"%"<<endl;
-		cout<<"case7 [TTTT.............AAAA]:"<<polyTA<<"\t"<<(polyTA/((double)totalSeqs))*100<<"%"<<endl;
-		cout<<"case8 [AAAA.............TTTT]:"<<polyAT<<"\t"<<(polyAT/((double)totalSeqs))*100<<"%"<<endl;
-		cout<<"case9 [No homopolymers detected]: "<<rejects<<endl;
-		cout<<"[Trashed Reads]: "<<trashed<<endl;
 	}else{
-		SCOPA::make_stats_folder();
-		ofstream polyout((char*)poly_file.c_str());
-		ofstream rejectout((char*)reject_file.c_str());
-		ofstream statout((char*)stats_file.c_str());
-		build_ghmm model = SCOPA::buildHMM(polyType[0]);
+		build_ghmm model = SCOPE::buildHMM(polyType[0]);
 		std::cout<<"model finalized"<<std::endl;
 		// if(model.isNULL()){
 		// 	cout<<"No homopolymers detected, try again?"<<endl; exit(-1);
@@ -1297,8 +979,8 @@ int main(int argc, char** argv){
 					minLength,file_type,model.poly_filt[0]));}
 		vector<std::thread> threads;
 		for(int i = 0; i<numThreads; i++){
-			threads.push_back(thread(SCOPA::detect,std::ref(*in),
-					std::ref(polyout),std::ref(rejectout),std::ref(vmodels[i])));}
+			threads.push_back(thread(SCOPE::detect,std::ref(*in),
+					std::ref(fastaout),std::ref(tabout),std::ref(vmodels[i])));}
 		for(int i = 0; i<numThreads; i++){threads[i].join();}
 		cout<<"Number of sequences with homopolymers "<<polys<<endl;
 		cout<<"Number of sequences without homopolymers "<<rejects<<endl;

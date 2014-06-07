@@ -237,10 +237,10 @@ double Viterbi::Q(char c){
 //Used by weighted viterbi algorithm and regular viterbi algorithm
 string Viterbi::align(string obs,string qual){
   
-  double weight = (qual=="")?(1):(Q(qual[0]));
+
   //int weight = (qual=="")?(1):(1);
-   
- 
+
+
   Matrix<double> V (this->tP.size(),obs.length());  //Viterbi Score matrix
   Matrix<int> T (this->tP.size(),obs.length()+1);      //Traceback matrix
   //Initialize states
@@ -256,7 +256,7 @@ string Viterbi::align(string obs,string qual){
   
   //Recursion
   for(int o = 1; o<(int)obs.length();o++){//o = observation
-    weight = (qual=="")?(1):(Q(qual[o]));
+
     //weight = (qual=="")?(1):(1);
     V[bG*midAA][o] = EP(obs[o],bAE)+findMax_B(tP[endAB]+V[endAB][o-1],        
 						     tP[begBG]+V[begBG][o-1],endAB,begBG,o+1,T); 

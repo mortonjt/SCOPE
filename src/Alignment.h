@@ -19,6 +19,25 @@ class Alignment{
       other.start==this->start and
       other.end==this->end;
   }
+  int getStart(){
+	  if(zeroBased)
+		  return start;
+	  else
+		  return start+1;
+  }
+  int getEnd(){
+	  if(zeroBased)
+		  return end;
+	  else
+		  return end+1;
+  }
+  std::string getType(){
+	std::stringstream ss;
+	ss<<"poly"<<this->polyType;
+	return ss.str();
+
+  }
+
   string toString1(){
     std::stringstream coord;
     if(this->isNULL()){return "";}
@@ -26,6 +45,7 @@ class Alignment{
       coord<<"(type="<<polyType<<",start="<<(start)<<",end="<<(end)<<")";
     else
       coord<<"(type="<<polyType<<",start="<<(start+1)<<",end="<<(end)<<")";
+
     return coord.str();
   }
   string toString2(){
