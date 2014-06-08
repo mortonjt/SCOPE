@@ -105,9 +105,6 @@ Command line parameters: \n\
     Input:\n\
        -i [input file] (required) \n\
           the fastq input file or the fasta input file\n\
-       --input_format [input file format] \n\
-             (default = fasta)\n\
-             fasta or fastq\n\
     Output:\n\
        -o [output file](required)\n\
        --out_format [output file format] \n\
@@ -180,7 +177,6 @@ void parse_cmdline(int argc, char** argv){
 				/* These options don't set a flag.
                   We distinguish them by their indices. */
 				{"i",required_argument,0, 'i'},
-				{"input_format",required_argument,0, 'f'},
 				{"file_type",required_argument,0, 's'},
 				{"o",required_argument,0, 'o'},
 				{"out_format",required_argument,0, 'r'},
@@ -223,12 +219,6 @@ void parse_cmdline(int argc, char** argv){
 		case 'i':seq_file = optarg;break;
 		case 'o':out_file = optarg;break;
 		case 's':file_type = optarg;break;
-		case 'f':{
-			file_format = optarg;
-			if(file_format!="fasta" and file_format!="fastq"){
-				cout<<"Need a fasta or fastq file"<<endl;
-				exit(0);}
-			break;}
 		case 'r':
 			out_format = optarg;
 			if(out_format!="fasta" and out_format!="fastq"){
@@ -936,6 +926,9 @@ int main(int argc, char** argv){
 		cout<<"Need input file!!!"<<endl;
 		exit(-1);}
 	ifstream* in = new ifstream((char*)seq_file.c_str());
+	
+	if(in->peek()=='>'){file_format="fasta";}
+	else{file_format="fastq";}
 
 	if(in->eof())
 		cout<<"Empty input file!!!"<<endl;
