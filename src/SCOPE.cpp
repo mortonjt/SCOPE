@@ -341,7 +341,11 @@ void load_defaults(){
 	}
 }
 
-
+//std::string readline(ifstream& in){
+//  std::string line;
+//  std::getline(in,line);
+//
+//}
 
 bool writeFastaBlock(vector<string> read,ostream& o){
 	if(read[0]=="END_OF_FILE" or read[0]=="%.$?/&?&),%")
@@ -376,16 +380,17 @@ vector<string> readFastaBlock(istream& f){
 		string cur_seq;
 		getline(f,cur_des);
 		getline(f,tmp);
-		while(!f.eof() and tmp[0]!='>'){
+		//std::cout<<"Description: "<<cur_des<<std::endl;
+		cur_seq+=tmp;
+		//std::cout<<tmp<<std::endl;
+		while(!f.eof() and f.peek()!='>'){
 			while(tmp=="\n");
-			cur_seq+=tmp;
 			getline(f,tmp);
+			cur_seq+=tmp;
+			//std::cout<<tmp<<std::endl;
 		}
-		if(!f.eof()){
-			int pos = f.tellg();
-			int length = tmp.length()+1;
-			f.seekg(pos-length);//restore last description
-		}
+		
+
 		pair.push_back(cur_des);
 		pair.push_back(cur_seq);
 		return pair;
@@ -404,6 +409,10 @@ vector<string> readFastqBlock(istream& f){
 	getline(f,tmp); quadruple.push_back(tmp);//cout<<tmp<<endl;
 	getline(f,tmp); quadruple.push_back(tmp);//cout<<tmp<<endl;
 	getline(f,tmp); quadruple.push_back(tmp);//cout<<tmp<<endl;
+	//tmp<<f;quadruple.push_back(tmp);
+	//tmp<<f;quadruple.push_back(tmp);
+	//tmp<<f;quadruple.push_back(tmp);
+	//tmp<<f;quadruple.push_back(tmp);
 	//quadruple.push_back(block);
 	if(quadruple[0]=="" or
 			quadruple[1]=="" or
@@ -592,10 +601,10 @@ vector<Alignment> SCOPE::viterbiCoord(Viterbi& mle,
 
 	//Viterbi algorithm
 	string path = mle.viterbi(s);
-
-	// cout<<s<<endl;
-	// cout<<path<<endl;
-	// cout<<endl;
+	//cout<<"Viterbi state sequence"<<endl;
+	//cout<<s<<endl;
+	//cout<<path<<endl;
+	//cout<<endl;
 
 	int k = 0;
 	while(k<(int)path.length()){
@@ -676,7 +685,7 @@ void SCOPE::formatSequence(vector<Alignment>& alignments,
 /*Assuming poly(A) or poly(T) and that
   it doesn't have both at once*/
 Alignment findClosest(vector<Alignment> align){
-	//cout<<"Reach the sky"<<endl;
+	cout<<"Found boundary homopolymers"<<endl;
 	//cout<<align.size()<<endl;
 	if(align.size()==0)
 	{
@@ -913,13 +922,15 @@ std::string getFileName(std::string s){
 
 int main(int argc, char** argv){
 	parse_cmdline(argc,argv);
-	//printArgs();
+	printArgs();
 	// if(default_parameters)
 	//   load_defaults();
 
-	// if(out_file==""){
-	//   cout<<"Need output file!!!"<<endl;
-	//   exit(-1);}
+	if(out_file==""){
+	   cout<<"Need output file!!!"<<endl;
+	   exit(-1);
+	}
+	
 	// ostream* out =  new ofstream((char*)out_file.c_str());
 	if(seq_file==""){
 		cout<<"Need input file!!!"<<endl;
@@ -968,23 +979,24 @@ int main(int argc, char** argv){
 		cout<<"[No homopolymers detected]: "<<rejects<<endl;
 		cout<<"[Trashed Reads]: "<<trashed<<endl;
 	}else{
-		build_ghmm model = SCOPE::buildHMM(polyType[0]);
-		std::cout<<"model finalized"<<std::endl;
-		// if(model.isNULL()){
-		// 	cout<<"No homopolymers detected, try again?"<<endl; exit(-1);
-		// }
-		vector<Viterbi> vmodels;//Make copies for each thread
-		for(int i = 0 ; i<numThreads; i++){
-			vmodels.push_back(Viterbi(model.polyA,model.backg,model.tranP,model.start,
-					minLength,file_type,model.poly_filt[0]));}
-		vector<std::thread> threads;
-		for(int i = 0; i<numThreads; i++){
-			threads.push_back(thread(SCOPE::detect,std::ref(*in),
-					std::ref(fastaout),std::ref(tabout),std::ref(vmodels[i])));}
-		for(int i = 0; i<numThreads; i++){threads[i].join();}
-		cout<<"Number of sequences with homopolymers "<<polys<<endl;
-		cout<<"Number of sequences without homopolymers "<<rejects<<endl;
-		cout<<"Number of trashed sequences "<<trashed<<endl;
+	  std::cout<<"Building model"<<std::endl;
+	  build_ghmm model = SCOPE::buildHMM(polyType[0]);
+	  std::cout<<"model finalized"<<std::endl;
+	  if(model.isNULL()){
+	    cout<<"No homopolymers detected, try again?"<<endl; exit(-1);
+	  }
+	  vector<Viterbi> vmodels;//Make copies for each thread
+	  for(int i = 0 ; i<numThreads; i++){
+	    vmodels.push_back(Viterbi(model.polyA,model.backg,model.tranP,model.start,
+				      minLength,file_type,model.poly_filt[0]));}
+	  vector<std::thread> threads;
+	  for(int i = 0; i<numThreads; i++){
+	    threads.push_back(thread(SCOPE::detect,std::ref(*in),
+				     std::ref(fastaout),std::ref(tabout),std::ref(vmodels[i])));}
+	  for(int i = 0; i<numThreads; i++){threads[i].join();}
+	  cout<<"Number of sequences with homopolymers "<<polys<<endl;
+	  cout<<"Number of sequences without homopolymers "<<rejects<<endl;
+	  cout<<"Number of trashed sequences "<<trashed<<endl;
 	}
 
 	return 0;

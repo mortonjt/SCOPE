@@ -272,10 +272,12 @@ bool build_ghmm::finalize_parameters(){
 vector<int> build_ghmm::block_score(string obs){
   int n = obs.length();
   int m = this->poly_filt.length();
-  if(m>n){
+  //std::cout<<"Obs: "<<obs<<std::endl;
+  //std::cout<<"Length "<<n<<" Filter length "<<m<<std::endl;
+  //if(m>n){
     //cout<<"Filter is too large";
     //abort();
-  }
+  //}
   vector<int> score(n-m,0);
   //First block
   //cout<<m<<endl;
