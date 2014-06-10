@@ -784,7 +784,7 @@ void SCOPE::writeRecord(vector<Alignment>& alns,
 					   ostream& fastaout,
 					   ostream& tabout,
 					   bool isTrash){
-	std::lock_guard<std::mutex> guard(filelock);
+
 	if(alns.size()==0){rejects++;
 	}else if(alns[0].isNULL() and alns[1].polyType=='A'){poly_A++;
 	}else if(alns[0].isNULL() and alns[1].polyType=='T'){poly_T++;
@@ -795,10 +795,12 @@ void SCOPE::writeRecord(vector<Alignment>& alns,
 	}else if(alns[0].polyType=='T' and alns[1].polyType=='A'){polyTA++;
 	}else if(alns[0].polyType=='A' and alns[1].polyType=='T'){polyAT++;
 	}else{rejects++;}
+
 	if(not isTrash)
 		printRead(d,ns,nq,fastaout);
 	printTab(d,alns,tabout,isTrash);
 	totalSeqs++;
+
 }
 
 
