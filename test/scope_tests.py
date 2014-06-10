@@ -81,6 +81,14 @@ if __name__=="__main__":
             parser = SCOPEparser(self.output_fasta,self.output_tab)
             self.assertEquals(parser.starts,self.csts)
             self.assertEquals(parser.ends,self.cends)
+        def test2(self):
+            cmd = "%s/src/SCOPE++ -i %s -o %s -z --trim"%(self.rootdir,self.input_fasta,self.output_fasta)
+            print cmd
+            proc = subprocess.Popen(cmd,shell=True)
+            proc.wait()
+            parser = SCOPEparser(self.output_fasta,self.output_tab)
+            self.assertEquals(parser.starts,self.csts)
+            self.assertEquals(parser.ends,self.cends)
 
     unittest.main()
 
