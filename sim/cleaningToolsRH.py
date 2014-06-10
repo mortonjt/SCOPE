@@ -1,11 +1,15 @@
 #run!/usr/bin/python2.7
+from sys import *
+sys.path.append("../parse/")
+
+from scope_parer import *
 from Bio import SeqIO
 from redhawk import pbsJobHandler
 import re
 import os
 import subprocess
 from itertools import izip
-from sys import stderr,exit
+
 
 scopa_params = ["z", "s", "f", "r", "d", "e", "t", "w", "m", "n", "k", "b", "x", "file_type", "no_retrain", "front_gap", "poly", "left_gap", "right_gap", "homopolymer_type"]
 
