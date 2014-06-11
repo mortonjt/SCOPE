@@ -25,5 +25,5 @@ class SCOPEparser(object):
                 self.starts.append(st)
                 self.ends.append(end)
                 self.ptypes.append(ptype)
-
+                
         pass
