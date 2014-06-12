@@ -1,4 +1,8 @@
 #run!/usr/bin/python2.7
+import sys
+sys.path.append("../parse/")
+
+from scope_parser import SCOPEparser;
 from Bio import SeqIO
 from redhawk import pbsJobHandler
 import re
@@ -18,9 +22,41 @@ class ScopeError(Exception):
         return str(self.value)
 
 #####################################################################
+# Launch a basic_clean.py" job
+def basicJob(inputFile, outputFile, x = 2, end = 3, base_type = 'A' min_length = 10, p = 0.05, search_alg = 'find_tail2', end = 3, terminate = False):
+
+    assert alg in {'find_tail', 'find_tail2'}, "Bad basic algorithm"
+    basic_command = "module load python.2.7; ../basic/basic_clean.py {alg} -x {x} -e {e} -t {t} -m {m} -p {p} {inputFile} {outputFile}".format(x=x, e=end, t=base_type, m=min_length, p=p, inputFile=inputFile, outputFile=outputFile)
+    timed_command = "/usr/bin/time -f {time_format} -o {cmd}".format("%U", "basic_cmmand")
+
+    if (terminate): # For debugging
+        print cmd[command.find("../basic"):]
+        exit(1)
+    
+    basicObj = subprocess.Popen(timed_command, shell = True, stdin = subprocess.PIPE, stdout = subprocess.PIPE);
+    basicObj.output = outputFile
+    return basicObj
+    
+def basicCollect(basicObject, clean = True):
+    out, err = basicObject.communicate()
+    if err: 
+        print(err.encode())
+        assert False
+    
+    return SCOPEparser(None, basicObject.output)
+
+def parseBasicInfo(next_seq, id_parser):
+    seq_info, seq_len = id_parser(next_seeq[0])
+    start = int(next_seq[1])
+    finish = int(new_seq[2])
+    return (next_seq[1], seq_info, [(next_seq[4], int(next_seq[1]), int(next_seq[2]))], seq_len)
+
+
+
+#####################################################################
 # Launch a SCOPA job and return the pbsJobHandler object
 # Input file should be in the DIR directory, and all output files will be written there.
-def scopaJob(inputFile, outputFile, z="", version = "17", s = None, f = None, r = None, d = None, e = None, t = None,
+def scopaJob(inputFile, outputFile, z="", s = None, f = None, r = None, d = None, e = None, t = None,
              w = None, m = None, n = None, k = None, b = None, x=None, file_type = None, no_retrain = False, DIR = ".", 
              bfile = "test_scopa.job", front_gap = None, poly = True, terminate = False, left_gap = None, right_gap = None, 
              homopolymer_type = None, numTrain = None, minIdentity = None):
@@ -33,18 +69,13 @@ def scopaJob(inputFile, outputFile, z="", version = "17", s = None, f = None, r 
     else:
         poly = None
 
-    outputFile += "_v" + str(version)
-    cmd = "/usr/bin/time -f %s -o %s ./SCOPA_v%s/SCOPE++ -i %s  -o %s" % ("%U", DIR + "/" + outputFile + ".time", str(version), DIR + "/" + inputFile, DIR + "/" + outputFile) + " "+ "  ".join(["%s%s %s" % ("-" if len(o)==1 else "--", o, str(eval(o))) for o in scopa_params if not eval(o) == None])
+    cmd = "/usr/bin/time -f %s -o %s ../src/SCOPE++ -i %s  -o %s" % ("%U", DIR + "/" + outputFile + ".time", DIR + "/" + inputFile, DIR + "/" + outputFile) + " "+ "  ".join(["%s%s %s" % ("-" if len(o)==1 else "--", o, str(eval(o))) for o in scopa_params if not eval(o) == None])
     if (terminate):   # For debugging
         print cmd[cmd.find("./SCOPA"):]
         exit(1)
     modules = ["python-2.7"]
     
 
-    """
-    Jamie Code: subprocess
-    """
-    ##############
     if (terminate):   # For debugging
        print cmd
        exit(1)
@@ -52,7 +83,8 @@ def scopaJob(inputFile, outputFile, z="", version = "17", s = None, f = None, r 
     scopa_job.wait()
     scopa_job.jobid = "-11111"
     return [DIR + "/" +outputFile,DIR + "/" +outputFile+".time"]
-    ##############3
+
+
     """
     Karro Code: Redhawk job scripts below
     """
