@@ -2,7 +2,7 @@
 import sys
 sys.path.append("../parse/")
 
-from scope_parser import SCOPEparser;
+from scope_parser import *
 from Bio import SeqIO
 from redhawk import pbsJobHandler
 import re
@@ -23,18 +23,18 @@ class ScopeError(Exception):
 
 #####################################################################
 # Launch a basic_clean.py" job
-def basicJob(inputFile, outputFile, x = 2, end = 3, base_type = 'A' min_length = 10, p = 0.05, search_alg = 'find_tail2', end = 3, terminate = False):
+# Timing disabled
+def basicJob(inputFile, outputFile, x = 2, DIR = ".", base_type = 'A', min_length = 10, p = 0.05, format = 'fasta', end = 3, terminate = False):
 
-    assert alg in {'find_tail', 'find_tail2'}, "Bad basic algorithm"
-    basic_command = "module load python.2.7; ../basic/basic_clean.py {alg} -x {x} -e {e} -t {t} -m {m} -p {p} {inputFile} {outputFile}".format(x=x, e=end, t=base_type, m=min_length, p=p, inputFile=inputFile, outputFile=outputFile)
-    timed_command = "/usr/bin/time -f {time_format} -o {cmd}".format("%U", "basic_cmmand")
+    #basic_command = "module load python.2.7; python2.7 ../basic/basic_clean.py -x {x} -e {e} -t {t} -m {m} -p {p} -f {format} {inputFile} {outputFile}".format(x=x, e=end, t=base_type, m=min_length, p=p, format=format, inputFile=DIR + "/" + inputFile, outputFile=outputFile)
+    basic_command = "python2.7 ../basic/basic_clean.py -x {x} -e {e} -t {t} -m {m} -p {p} -f {format} {inputFile} {outputFile}".format(x=x, e=end, t=base_type, m=min_length, p=p, format=format, inputFile=DIR + "/" + inputFile, outputFile=DIR + "/" + outputFile)
+    #timed_command = "/usr/bin/time -f {time_format} -o {cmd}".format(time_format = "%U", cmd = "basic_cmmand")
 
     if (terminate): # For debugging
-        print cmd[command.find("../basic"):]
         exit(1)
     
-    basicObj = subprocess.Popen(timed_command, shell = True, stdin = subprocess.PIPE, stdout = subprocess.PIPE);
-    basicObj.output = outputFile
+    basicObj = subprocess.Popen(basic_command, shell = True, stdin = subprocess.PIPE, stdout = subprocess.PIPE);
+    basicObj.output = DIR + "/" + outputFile
     return basicObj
     
 def basicCollect(basicObject, clean = True):
@@ -42,14 +42,12 @@ def basicCollect(basicObject, clean = True):
     if err: 
         print(err.encode())
         assert False
-    
-    return SCOPEparser(None, basicObject.output)
+
+    return -1, scope_result_generator(SCOPEparser(None, basicObject.output))
 
 def parseBasicInfo(next_seq, id_parser):
-    seq_info, seq_len = id_parser(next_seeq[0])
-    start = int(next_seq[1])
-    finish = int(new_seq[2])
-    return (next_seq[1], seq_info, [(next_seq[4], int(next_seq[1]), int(next_seq[2]))], seq_len)
+    seq_info, seq_len = id_parser(next_seq[0])
+    return (next_seq[0], seq_info, [(next_seq[3][-1], int(next_seq[1]), int(next_seq[2]))], seq_len)
 
 
 
@@ -69,73 +67,30 @@ def scopaJob(inputFile, outputFile, z="", s = None, f = None, r = None, d = None
     else:
         poly = None
 
-    cmd = "/usr/bin/time -f %s -o %s ../src/SCOPE++ -i %s  -o %s" % ("%U", DIR + "/" + outputFile + ".time", DIR + "/" + inputFile, DIR + "/" + outputFile) + " "+ "  ".join(["%s%s %s" % ("-" if len(o)==1 else "--", o, str(eval(o))) for o in scopa_params if not eval(o) == None])
+    #cmd = "/usr/bin/time -f %s -o %s ../src/SCOPE++ -i %s  -o %s" % ("%U", DIR + "/" + outputFile + ".time", DIR + "/" + inputFile, DIR + "/" + outputFile) + " "+ "  ".join(["%s%s %s" % ("-" if len(o)==1 else "--", o, str(eval(o))) for o in scopa_params if not eval(o) == None])
+
+
+    cmd = "../src/SCOPE++ -i {input_file} -o {output_file}".format(input_file = DIR + "/" + inputFile, output_file = DIR + "/" + outputFile)
+    for o in scopa_params:
+        if not (eval(o) is None):
+            cmd += " %s%s %s" % ("-" if len(o) == 1 else "--", o, str(eval(o)))
+
     if (terminate):   # For debugging
-        print cmd[cmd.find("./SCOPA"):]
+        print cmd[cmd.find("../SCOPA"):]
         exit(1)
-    modules = ["python-2.7"]
-    
 
-    if (terminate):   # For debugging
-       print cmd
-       exit(1)
     scopa_job = subprocess.Popen(cmd,shell=True, stdin = subprocess.PIPE, stdout = subprocess.PIPE)
-    scopa_job.wait()
-    scopa_job.jobid = "-11111"
-    return [DIR + "/" +outputFile,DIR + "/" +outputFile+".time"]
-
-
-    """
-    Karro Code: Redhawk job scripts below
-    """
-    # scopa_job = pbsJobHandler(batch_file = bfile, executable = cmd, nodes = 1, ppn = 1, output_location = DIR,
-    #                            RHmodules = modules, walltime = "01:00:00")
-    # scopa_job.name = "SCOPA" + "_v" + str(version)
-    # scopa_job.output = outputFile
-    # scopa_job.DIR = DIR
-    # scopa_job.t = t
-    # return scopa_job.submitjob()
-
+    scopa_job.output = DIR + "/" + outputFile + ".tab"
+    return scopa_job
 
 
 # Take the SCPA pbsJobHandeler object, wait for completion, and return the runtime and the results as a list of sequence records
-def scopaCollect(scopaObj, clean=True):
-    """
-    Jamie Code: subprocess scripts
-    """
+scopaCollect = basicCollect   # Same format, so same function
     
-    outputFile = scopaObj[0]
-    timeFile = scopaObj[1]
-    return [0.0, SeqIO.parse(open(outputFile), "fasta")]
-    ###############################
-
-
-    """
-    Karro Code: redhawk job scripts
-    """
-    # outputFile = scopaObj.DIR + "/" + scopaObj.output
-    # timeFile = outputFile + ".time"
-
-    # o,e = scopaObj.getResults(clean)
-    # if e.rstrip():
-    #     raise RuntimeError("Error in SCOPA execution:\nCOMMAND: " + scopaObj.executable_name + "\nERROR: " + e + "\n")
-    # try:
-    #     time = float(open(timeFile, "r").readline().rstrip("\n"))
-    # except:
-    #     stderr.write("SCOPA failed:\n%s\n%s\n" % (scopaObj.executable_name,timeFile))
-    #     exit(1)
-    # return [time, SeqIO.parse(open(outputFile), "fasta")]
         
 # Take the list of sequence records and return a list of results
-def parseScopaInfo(seq_record, id_parser):
-    r = re.search("(?:id|Seq)\d+", seq_record.description)
-    seq_info, seq_len = id_parser(seq_record.description)
+parseScopaInfo = parseBasicInfo   # Same format, so same function
 
-    seq_found = []
-    for p in re.findall("\(type=(\w+),start=(\d+),end=(\d+)\)", seq_record.description):
-        seq_found.append((p[0], int(p[1]), int(p[2])))
-
-    return (r.group(0), seq_info, seq_found, seq_len)
 
 ##########################################
 # Launch a SeqTrim job and return the pbsJobHandler object

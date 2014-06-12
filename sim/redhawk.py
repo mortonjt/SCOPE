@@ -17,6 +17,7 @@ import pickle
 from argparse import *
 import pwd
 import datetime
+import cPickle
 
 uid = os.getuid()
 current_user = pwd.getpwuid(uid)[0]  # When run on redhawk with a nohup, os.getlogin() does not work
@@ -463,12 +464,11 @@ def get_number_of_jobs_in_queue(user=current_user):
 
 def storePBS(pbsList, fp):
     """Pickle and save a PBS job to a specified file pointer."""
-    for p in pbsList:
-        cPickle.dump(pbsList, fp)
+    cPickle.dump(pbsList, fp)
 
 def loadPBS(fp):
     """Recover a list of pickled jobs from a specified file pointer."""
-    return [obj for obj in cPickle.load(fp)]
+    return cPickle.load(fp)
 
 
 def relaunch(args = sys.argv, force = False, walltime = "40:00:00", python = "python"):

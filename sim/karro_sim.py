@@ -9,7 +9,7 @@ from random import *
 import subprocess
 import shlex
 from Bio.Blast import NCBIXML
-from Bio.Blast import NCBIStandalone
+#from Bio.Blast import NCBIStandalone
 import os
 import stat
 import scipy
@@ -250,16 +250,10 @@ def analysis(records, analysis_function, polyType, options):
                 right_trim.append(predicted_list[0][2] - real_list[0][2])
                 trim.append(left_trim[-1] + right_trim[-1])
 
-        #if fp > fp_old:
-        #    print "FP: ", id
-
-#        if tp - tp_old > 0:
-#            print id, tp - tp_old, tn - tn_old, fp - fp_old, fn - fn_old, split, join, left_trim[-1], right_trim[-1]
-#        else:
-#            print id, None
 
     sensitivity = float(tp) / (tp + fn) if tp + fn > 0 else -1
     specificity = float(tn) / (tn + fp) if tn + fp > 0 else -1
+
     total_pos = tp + fn
     total_neg = fp + tn
     if len(trim) > 0:
@@ -313,9 +307,9 @@ def launch_jobs(options):
 
         # Launch simulations
         fp = open("log.txt", "a")
-        SCOPA   = scopaJob(version = options.version, inputFile = options.sim_file, e = None, t = options.polyType, w =w, d = None, m = m, b = b, x = x, n = None, k=None, outputFile = "SCOPA.out.%s" % options.id, DIR=options.outputDir, 
+        SCOPA   = scopaJob(inputFile = options.sim_file, e = None, t = options.polyType, w =w, d = None, m = m, b = b, x = x, n = None, k=None, outputFile = "SCOPA.out.%s" % options.id, DIR=options.outputDir, 
                            minIdentity=options.minIdentity, terminate=options.terminate, no_retrain=True, front_gap=options.front_gap, poly=options.poly, numTrain=options.numTrain) if options.SCOPA else None
-        SCOPABW = scopaJob(version = options.version, inputFile = options.sim_file, e = "", t = options.polyType, w =w, d = None, m = m, b = b, x = x, n = None, k=None, outputFile = "SCOPA.out.%s" % options.id, DIR=options.outputDir, 
+        SCOPABW = scopaJob(inputFile = options.sim_file, e = "", t = options.polyType, w =w, d = None, m = m, b = b, x = x, n = None, k=None, outputFile = "SCOPA.out.%s" % options.id, DIR=options.outputDir, 
                          minIdentity=options.minIdentity, terminate=options.terminate, no_retrain=False, front_gap=options.front_gap, poly=options.poly, numTrain=options.numTrain) if options.SCOPABW else None
         #SCOPABW = scopaJob(inputFile = options.sim_file, e = "", homopolymer_type = options.polyType, w =w, d = None, m = m, b = b, x = x, n = None, outputFile = "SCOPA.out.%s" % options.id, DIR=options.outputDir, 
         #                 terminate=options.terminate, minIdentity = options.minIdentity, no_retrain=False, left_gap=options.front_gap if options.polyType=='T' else None, right_gap = options.front_gap if options.polyType=='A' else None, poly=options.poly, version = "17", t = None, front_gap = None) if options.SCOPABW else None
@@ -323,24 +317,28 @@ def launch_jobs(options):
         CLEAN = seqCleanJob(options.sim_file, "CLEAN", DIR = options.outputDir, terminate=options.terminate) if options.CLEAN else None
         POLY = polyJob(options.sim_file, "POLY", DIR = options.outputDir, terminate=options.terminate) if options.POLY else None
         TRIMEST = trimestJob(options.sim_file, "TRIMEST", DIR = options.outputDir, terminate=options.terminate) if options.TRIMEST else None
+        BASICTOOL = basicJob(options.sim_file, "BASICTOOL", DIR = options.outputDir, terminate=options.terminate) if options.BASICTOOL else None
 
         #for o in [SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST]:
         #    if o:
         #        fp.write("%s: %s\n" % (o.jobid, o.executable_name))
         fp.close()
 
-        if options.SCOPA:
-            storePBS([SCOPA], open("last.scopa", "w"))
-        if options.SCOPABW:
-            storePBS([SCOPABW], open("last.scopabw", "w"))
-        if options.TRIM:
-            storePBS([TRIM], open("last.trim", "w")) 
-        if options.CLEAN:
-            storePBS([CLEAN], open("last.clean", "w")) 
-        if options.POLY:
-            storePBS([POLY], open("last.poly", "w"))
-        if options.TRIMEST:
-            storePBS([TRIMEST], open("last.trimest", "w"))
+        
+        # if options.SCOPA:
+        #     storePBS([SCOPA], open("last.scopa", "w"))
+        # if options.SCOPABW:
+        #     storePBS([SCOPABW], open("last.scopabw", "w"))
+        # if options.TRIM:
+        #     storePBS([TRIM], open("last.trim", "w")) 
+        # if options.CLEAN:
+        #     storePBS([CLEAN], open("last.clean", "w")) 
+        # if options.POLY:
+        #     storePBS([POLY], open("last.poly", "w"))
+        # if options.TRIMEST:
+        #     storePBS([TRIMEST], open("last.trimest", "w"))
+        # if options.BASICTOOL:
+        #     storePBS([BASICTOOL], open("last.basictool", "w"))
 
     else:
         SCOPA = loadPBS(open("last.scopa"))[0] if options.SCOPA else None
@@ -349,15 +347,16 @@ def launch_jobs(options):
         CLEAN = loadPBS(open("last.clean"))[0] if options.CLEAN else None
         POLY = loadPBS(open("last.poly"))[0] if options.POLY else None
         TRIMEST = loadPBS(open("last.trimest"))[0] if options.TRIMEST else None
+        BASICTOOL = loadPBS(open("last.basictool"))[0] if options.BASICTOOL else None
 
-    return SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST
+    return SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST, BASICTOOL
 
 
 def basicSim(options, args):
     # Generate files
 
-
     SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST = launch_jobs(options)
+
 
     # Get / print results in column format
     fp = sys.stdout if options.output == None else open(options.output, "w")
@@ -388,6 +387,10 @@ def basicSim(options, args):
         time, results = trimestCollect(TRIMEST, not options.keep_files)
         stats = analysis(results, parseTrimestInfo, options.polyType, options)
         printResults(fp, "TRIMEST", [time] + stats)
+    if options.BASICTOOL:
+        time, results = basicCollect(BASICTOOL, not options.keep_files)
+        stats = analysis(results, parseBasicInfo, options.polyType, options)
+        printResults(fp, "BASICTOOL", [time] + stats)
 
 
 def error_variation(options, args):
@@ -402,8 +405,7 @@ def error_variation(options, args):
     for error in arange(start, stop, step):
         options.error_rate = error
         real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
-        SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST = launch_jobs(options)
-
+        SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST, BASICTOOL = launch_jobs(options)
 
         if options.SCOPA:
             time, results = scopaCollect(SCOPA, False)
@@ -435,9 +437,14 @@ def error_variation(options, args):
             stats = analysis(results, parseTrimestInfo, options.polyType, options)
             fp.write(('{:<7}'*1).format(error))
             printResults(fp, "TRIMEST", [time] + stats)
+        if options.BASICTOOL:
+            time, results = basicCollect(BASICTOOL, not options.keep_files)
+            stats = analysis(results, parseBasicInfo, options.polyType, options)
+            fp.write(('{:<7}'*1).format(error))
+            printResults(fp, "BASICTOOL", [time] + stats)
 
 def endLengthSim(options, args):
-    """Look at the effect of variation in the length of the post-fragment tail"""
+    """Look at the effect of variation in theo length of the post-fragment tail"""
     options.specificity_test = False
     fp = sys.stdout if options.output == None else open(options.output, "w")
     if not options.Header_off:
@@ -482,6 +489,10 @@ def endLengthSim(options, args):
             stats = analysis(results, parseTrimestInfo, options.polyType, options)
             fp.write(('{:<7}'*1).format(tail_len))
             printResults(fp, "TRIMEST", [time] + stats)
+        if options.BASICTOOL:
+            time, results = basicCollect(TRIMEST, not options.keep_files)
+            stats = analysis(results, parseBasicInfo, options.polyType, options)
+            printResults(fp, "BASICTOOL", [time] + stats)
 
 def lenTest(options, args):
     """Look at the effect of changing poly(A) tail length and post-fragment tail length"""
@@ -698,10 +709,11 @@ if __name__ == "__main__":
     selectionGroup.add_option("-B", "--SCOPABW_off", action="store_false", dest = "SCOPABW", help="Supress SCOPA (Baum Welch) testing (default: %default)", default = True)
     selectionGroup.add_option("-T", "--TRIM_off", action="store_false", dest = "TRIM", help="Supress SeqTrim testing (default: %default)", default = True)
     selectionGroup.add_option("-C", "--CLEAN_off", action="store_false", dest = "CLEAN", help="Supress SeqClean testing (default: %default)", default = True)
+    selectionGroup.add_option("--BT", "--BASICTOOL_off", action = "store_false", dest = "BASICTOOL", help="Suprosee BasicTool testing (default: %default)", default = True)
     selectionGroup.add_option("--TP", "--TRIMPOLY_off", action="store_false", dest = "POLY", help="Supress PolyTrim testing (default: %default)", default = True)
     selectionGroup.add_option("--TE", "--TRIMEST_off", action="store_false", dest = "TRIMEST", help="Supress TrimEST testing (default: %default)", default = True)
     selectionGroup.add_option("--so", "--SCOPE_ONLY", action="store_true", dest = "scope_only", help="Supress every tool but SCOPE", default = False)
-    selectionGroup.add_option("--AT", "--all_tools", action ="store", dest = "all_tools", type = int, nargs = 6, help = "Designate which of the six tools should be used (scope++, scope++/bw, SeqTrim, SeqClean, PolyTrim, TrimEST)", default = None)
+    selectionGroup.add_option("--AT", "--all_tools", action ="store", dest = "all_tools", type = int, nargs = 7, help = "Designate which of the six tools should be used (scope++, scope++/bw, SeqTrim, SeqClean, PolyTrim, TrimEST, BasicClean)", default = None)
 
     experimentGroup = OptionGroup(parser, "Experiment Selection")
     parser.add_option_group(experimentGroup)
@@ -740,7 +752,7 @@ if __name__ == "__main__":
         options.SCOPABW, options.TRIM, options.CLEAN, options.POLY, options.TRIMEST = [None]*5
         options.SCOPE = True
     elif options.all_tools:
-        options.SCOPA, optionsBW, options.TRIM, options.CLEAN, options.POLY, options.TRIMEST = [bool(x) for x in optiona.all_tools]
+        options.SCOPA, optionsBW, options.TRIM, options.CLEAN, options.POLY, options.TRIMEST, options.BASICTOOL = [bool(x) for x in options.all_tools]
 
     if options.pid:
         options.sim_file += ".%s" % options.id

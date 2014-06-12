@@ -1,5 +1,5 @@
-#from Bio import SeqIO
-#from Bio.SeqRecord import SeqRecord
+from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
 import argparse
 
 def find_tail(transcript, x = 2, end = 3, base_type = 'A', min_length = 10, p = 0.05):
@@ -38,7 +38,7 @@ def find_tail(transcript, x = 2, end = 3, base_type = 'A', min_length = 10, p = 
 
 def find_tail2(transcript, x = 2, end = 3, base_type = 'A', min_length = 10, p = 0.05):
     """Scan from 3' or 5' end for a poly-type tale.  Find the longest sequence that starts and ends with x As has no more that 100*p% non-As."""
-    assert end in {3,5} and base_type in "ACGT", "Find_tail: bad parameters"
+    assert str(end) in {'3','5'} and base_type in "ACGT", "Find_tail: bad parameters (%s, %s)" % (str(end), str(base_type))
     
     s = str(transcript.seq if end == 5 else transcript.seq[::-1])  # If searching from 3' end, reverse it.
 
@@ -46,6 +46,8 @@ def find_tail2(transcript, x = 2, end = 3, base_type = 'A', min_length = 10, p =
     start_positions = set()       # coordinates that are the start of a maximal sequence of >=  As.  
     end_positions = set()         # coordinates that are the end of a maximal sequence of >= x As
     continuous = 0
+
+    
 
     for i in range(len(s)):
         if s[i] == base_type:
@@ -66,20 +68,16 @@ def find_tail2(transcript, x = 2, end = 3, base_type = 'A', min_length = 10, p =
             if i < j and (count[j] - count[i]) / float(j - i) <= p:
                 best = max(best, (j-i, i, j))
 
-    print("HERE1")
     if best[0] < min_length:
         return None
 
-    print("HERE2")
     if end == 5:
-        print("HERE3")
         return [best[1], best[2]]
     else:
-        print("HERE4")
         return [len(s) - best[2], len(s) - best[1]]
 
 
-def tail_search(input, output, file_format = "fastq", x = 2, end = 3, base_type = 'A', min_length = 10, p = 0.05, search_alg = 'find_tail'):
+def tail_search(input, output, file_format = "fastq", x = 2, end = 3, base_type = 'A', min_length = 10, p = 0.05, search_alg = find_tail2):
     fp = open(output, "w")
     for R in SeqIO.parse(input, file_format):
         T = search_alg(R, x, end, base_type, min_length, p)
@@ -92,8 +90,8 @@ if __name__ == "__main__":
 
     alg_parser = parser.add_argument_group("Choice of algorithm")
     alg_group = alg_parser.add_mutually_exclusive_group()
-    alg_group.add_argument("-b", "--basic_alg", dest = 'alg', action = 'store_const', const = 'find_tail', help = "Basic linear-scan algorithm", default = 'find_tail')
-    alg_group.add_argument("-s", "--second_alg", dest = 'alg', action = 'store_const', const = 'find_tail2', help = "More advanced (basic) scan algoritn")
+    alg_group.add_argument("-b", "--basic_alg", dest = 'alg', action = 'store_const', const = find_tail, help = "Basic linear-scan algorithm", default = find_tail2)
+    alg_group.add_argument("-s", "--second_alg", dest = 'alg', action = 'store_const', const = find_tail2, help = "More advanced (basic) scan algorithm")
     
     parameters_group = parser.add_argument_group("Algorithmic parameters")
     parameters_group.add_argument('-x', dest = 'x', type = int, help = "Number of bases at each end of tail", default = 2);
@@ -110,4 +108,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
-    eval(args.alg)(args.input, args.output, args.format, args.x, args.end, args.base_type, args.min, args.p)
+    tail_search(input = args.input, output = args.output, file_format = args.format, x = args.x, end = args.end, base_type = args.base_type, min_length = args.min, p = args.p, search_alg = args.alg)

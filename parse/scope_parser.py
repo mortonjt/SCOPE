@@ -29,7 +29,7 @@ class SCOPEparser(object):
         pass
 
 
-def result_generator(scopeParserObject):
+def scope_result_generator(scopeParserObject):
     """Take a SCOPEparser object and return generator for iteration over the results"""
     for title, start, end, ptype in zip(scopeParserObject.titles, scopeParserObject.starts, scopeParserObject.ends, scopeParserObject.ptypes):
         yield title,start,end,ptype
