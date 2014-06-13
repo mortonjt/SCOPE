@@ -462,7 +462,7 @@ char offset(char s){
 	return i;
 }
 
-bool SCOPE::baumWelchTrain(build_ghmm& model){
+bool SCOPE::baumWelchTrain(build_ghmm& model, std::vector<string>& training_seqs){
 	Viterbi mle(model.polyA,
 			model.backg,
 			model.tranP,
@@ -475,14 +475,14 @@ bool SCOPE::baumWelchTrain(build_ghmm& model){
 	double P;
 	//model.print_parameters();
 	bool doneTraining = false;
-	for(unsigned int j = 0 ; j<trainSeqs.size();j++){
+	for(unsigned int j = 0 ; j<training_seqs.size();j++){
 		F = mle.forward(trainSeqs[j]);
 		B = mle.backward(trainSeqs[j]);
 
 		FM = F.first;
 		BM = B.first;
 		P = F.second;
-		doneTraining = model.baumwelchTrain(FM,BM,P,trainSeqs[j]);
+		doneTraining = model.baumwelchTrain(FM,BM,P,training_seqs[j]);
 		//model.print_parameters();
 
 	}
@@ -535,7 +535,7 @@ build_ghmm SCOPE::buildHMM(char polymerType){
 	//   return build_ghmm();
 	// }
 	if(retrain and A>0)
-		while(!SCOPE::baumWelchTrain(model));//Train until convergence
+		while(!SCOPE::baumWelchTrain(model,trainSeqs));//Train until convergence
 	trainSeqs.clear();
 	fin.close();
 	fin.clear();

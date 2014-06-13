@@ -158,7 +158,7 @@ def read_validation_data(input_file, options):
                         
 
             O.append(ESTFrag(label=str(counter) + ".a", seq_arr = seq_arr, seq_type = seq_type))    
-            #print O[-1].label, O[-1].seq_type, O[-1].seq_arr
+            #print(O[-1].label, O[-1].seq_type, O[-1].seq_arr)
 
             if options.specificity_test:
                 last = 0
@@ -244,7 +244,7 @@ def analysis(records, analysis_function, polyType, options):
             elif len(predicted_list) > 1:
                 split += 1
             else:
-                #print real_list, predicted_list
+                #print(real_list, predicted_list)
                 tp += 1
                 left_trim.append(real_list[0][1] - predicted_list[0][1])
                 right_trim.append(predicted_list[0][2] - real_list[0][2])
@@ -620,7 +620,7 @@ def timing(options, args):
 
 
     for n in range(*options.timing):
-        print "n: ", n
+        print("n: ", n)
         timing_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options, n=n)
 
         m,w,b,x = options.params;

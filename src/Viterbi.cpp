@@ -46,6 +46,23 @@ vector<double> prob2log(vector<double> in){
   return v;
 } 
 
+void printMatrix(Matrix<int> &m){
+  for(int i = 0;i<m.getR();i++){
+    for(int j = 0; j<m.getC();j++){
+      cout<<m[i][j]<<" ";
+    }
+    cout<<endl;
+  }
+}
+
+void printMatrix(Matrix<double> &m){
+  for(int i = 0;i<m.getR();i++){
+    for(int j = 0; j<m.getC();j++){
+      cout<<m[i][j]<<" ";
+    }
+    cout<<endl;
+  }
+}
 
 double Viterbi::EP(char c, vector<double> &vec){ // KARRO: parameter change
   switch(c){
@@ -118,18 +135,22 @@ Viterbi::Viterbi(vector<double> p,
 }
 
 void Viterbi::print_parameters(){
+  cout<<"polyA state parameters: num parameters:"<<pAE.size()<<endl;
   for(int i = 0; i<(int)this->pAE.size();i++){
     cout<<this->pAE[i]<<" ";
   }
   cout<<endl;
+  cout<<"background state parameters: num parameters:"<<bAE.size()<<endl;
   for(int i = 0; i<(int)this->bAE.size();i++){
     cout<<this->bAE[i]<<" ";
   }
   cout<<endl;
+  cout<<"transition state parameters"<<endl;
   for(int i = 0; i<(int)this->tP.size();i++){
     cout<<this->tP[i]<<" ";
   }
   cout<<endl;
+  cout<<"start state parameters"<<endl;
   for(int i = 0; i<(int)this->st.size();i++){
     cout<<this->st[i]<<" ";
   }
@@ -147,19 +168,25 @@ pair< Matrix<double>,double> Viterbi::forward(string obs){
   int endBA = midAA-1;      //Index of last boundary (B->A)
   F[begBG][0] = this->st[bG]+(EP(obs[0],bAE));
   F[midAA][0] = this->st[pA]+(EP(obs[0],pAE));
+  //cout<<F[begBG][0]<<" obs: "<<EP(obs[0],bAE)<<endl;
+  //cout<<F[midAA][0]<<" obs: "<<EP(obs[0],pAE)<<endl;
+
   //Recursion
   for(int o = 1; o<(int)obs.length();o++){//o = observation
     F[begBG][o] = logsum(EP(obs[o],bAE)+tP[endAB]+F[midAA][o-1],        
-    			 EP(obs[o],bAE)+tP[begBG]+F[begBG][o-1]); 
+    	       		     EP(obs[o],bAE)+tP[begBG]+F[begBG][o-1]);
     for(int i = 1; i<midAA; i++){					
       F[i][o] = (obs[o]==polyType)?((tP[i]+F[i-1][o-1])):(neg_inf);
-    }
+      //F[i][o] = (obs[o]==polyType)?((tP[i]+F[i-1][o-1])):(0);
+      }
     F[midAA][o] = logsum(EP(obs[o],pAE)+tP[midAA]+F[midAA][o-1],        
-    			 EP(obs[o],pAE)+tP[endBA]+F[begBG][o-1]);
+    			         EP(obs[o],pAE)+tP[endBA]+F[begBG][o-1]);
     for(int i = midAA+1; i<endAB+1; i++){
       F[i][o] = (obs[o]==polyType)?((tP[i]+F[i-1][o-1])):(neg_inf);
-    }
+      //F[i][o] = (obs[o]==polyType)?((tP[i]+F[i-1][o-1])):(0);
+     }
   }
+  //printMatrix(F);
   //Termination
   int e = obs.size()-1; 
   return pair< Matrix<double>,double>(F,logsum(F[begBG][e],
@@ -187,11 +214,13 @@ pair< Matrix<double>,double> Viterbi::backward(string obs){
     			 EP(obs[o],bAE)+tP[endBA]+B[midAA][o+1]);
     for(int i = 1; i<midAA; i++){		       		
       B[i][o] = (obs[o]==polyType)?((tP[i]+B[i-1][o+1])):(neg_inf);
+      //B[i][o] = (obs[o]==polyType)?((tP[i]+B[i-1][o+1])):(0);
     }
     B[midAA][o] = logsum(EP(obs[o],pAE)+tP[midAA]+B[midAA][o+1],
-    			 EP(obs[o],pAE)+tP[endAB]+B[begBG][o+1]);
+           			     EP(obs[o],pAE)+tP[endAB]+B[begBG][o+1]);
     for(int i = midAA+1; i<endAB+1; i++){
       B[i][o] = (obs[o]==polyType)?((tP[i]+B[i-1][o+1])):(neg_inf);
+      //B[i][o] = (obs[o]==polyType)?((tP[i]+B[i-1][o+1])):(0);
     }
   }
   
@@ -201,23 +230,6 @@ pair< Matrix<double>,double> Viterbi::backward(string obs){
 }
 
 
-void printMatrix(Matrix<int> &m){
-  for(int i = 0;i<m.getR();i++){
-    for(int j = 0; j<m.getC();j++){
-      cout<<m[i][j]<<" ";
-    }
-    cout<<endl;
-  }
-}
-
-void printMatrix(Matrix<double> &m){
-  for(int i = 0;i<m.getR();i++){
-    for(int j = 0; j<m.getC();j++){
-      cout<<m[i][j]<<" ";
-    }
-    cout<<endl;
-  }
-}
 
 double Viterbi::Q(char c){
   double v;

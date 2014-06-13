@@ -28,11 +28,11 @@ build_ghmm::build_ghmm(){//The null model
 }
 
 build_ghmm::build_ghmm(string fileType,
-		       int filter_width,
-		       char polyType,
-		       int lK,//Laplacian constant
-		       int edgeC,
-		       int numS){//Edge constant (aka for edge detection)
+					   int filter_width,
+					   char polyType,
+					   int lK,//Laplacian constant
+					   int edgeC,
+					   int numS){//Edge constant (aka for edge detection)
   //cout<<polyType<<endl;
   this->poly_filt = this->genFilter(fileType,filter_width,polyType);
   this->fT = fileType;
@@ -162,7 +162,6 @@ bool build_ghmm::baumwelchTrain(Matrix<double> F, Matrix<double> B, double p_x, 
   emitSum(F,begBG,B,begBG,obs,this->backgcount);
   emitSum(F,midAA,B,midAA,obs,this->polyAcount);
   vector<double> prevPolyA, prevBackg, prevTranP;
-  //cout<<"Imma going to seg fault"<<endl;  
   for(int i = 0;i<(int)this->polyA.size();i++){prevPolyA.push_back(this->polyA[i]);}
   for(int i = 0;i<(int)this->backg.size();i++){prevBackg.push_back(this->backg[i]);}
   for(int i = 0;i<(int)this->tranP.size();i++){prevTranP.push_back(this->tranP[i]);}

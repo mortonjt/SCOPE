@@ -4,12 +4,17 @@ sys.path.append("../parse/")
 
 from scope_parser import *
 from Bio import SeqIO
-from redhawk import pbsJobHandler
 import re
 import os
-import subprocess
-from itertools import izip
 from sys import stderr,exit
+
+#
+#### Import redhawk if running on redhawk and want to batch jobs in parallel.  Otherwise import subprocess.
+#
+
+#from redhawk import *
+from subprocess import *
+
 
 #scopa_params = ["z", "s", "f", "r", "d", "e", "t", "w", "m", "n", "k", "b", "x", "file_type", "no_retrain", "front_gap", "poly", "left_gap", "right_gap", "homopolymer_type"]
 scopa_params = ["z", "s", "f", "r", "d", "e", "t", "w", "m", "n", "k", "b", "x", "file_type", "no_retrain", "poly", "homopolymer_type", "numTrain", "minIdentity"]
@@ -33,7 +38,7 @@ def basicJob(inputFile, outputFile, x = 2, DIR = ".", base_type = 'A', min_lengt
     if (terminate): # For debugging
         exit(1)
     
-    basicObj = subprocess.Popen(basic_command, shell = True, stdin = subprocess.PIPE, stdout = subprocess.PIPE);
+    basicObj = Popen(basic_command, shell = True, stdin = subprocess.PIPE, stdout = subprocess.PIPE);
     basicObj.output = DIR + "/" + outputFile
     return basicObj
     
@@ -76,10 +81,10 @@ def scopaJob(inputFile, outputFile, z="", s = None, f = None, r = None, d = None
             cmd += " %s%s %s" % ("-" if len(o) == 1 else "--", o, str(eval(o)))
 
     if (terminate):   # For debugging
-        print cmd[cmd.find("../SCOPA"):]
+        print(cmd[cmd.find("../SCOPA"):])
         exit(1)
 
-    scopa_job = subprocess.Popen(cmd,shell=True, stdin = subprocess.PIPE, stdout = subprocess.PIPE)
+    scopa_job = Popen(cmd, shell=True, stdin = subprocess.PIPE, stdout = subprocess.PIPE)
     scopa_job.output = DIR + "/" + outputFile + ".tab"
     return scopa_job
 
@@ -98,11 +103,17 @@ def seqTrimJob(inputFile, outputFile, DIR = ".", bfile = "test_seqtrim.job", ter
     #cmd = "/usr/bin/time -o %s -f \"%s\" seqtrim.pl -a qv --seqMinLength 1 -f %s > %s" % (DIR + "/" + outputFile + ".time", "%U", DIR + "/" + inputFile, DIR + "/" + outputFile)
     cmd = "/usr/bin/time -o %s -f \"%s\" ./wrapper.py \"seqtrim.pl -a v --seqMinLength 1 -f %s > %s\"" % (DIR + "/" + outputFile + ".time", "%U", DIR + "/" + inputFile, DIR + "/" + outputFile)
     if (terminate):
-        print cmd
+        print(cmd)
         exit(1)
+
     modules = ["blast", "seqtrim"]
-    seqtrim_job = pbsJobHandler(batch_file = bfile, executable = cmd, nodes = 1, ppn = 1, output_location = DIR,
-                                RHmodules = modules, walltime = "1:00:00")
+    try:
+        set_pbs_defaults({'nodes':1,'ppn':1,'output_location':DIR,'RHmodules':modules,'walltime':'1:00:00'})
+    except:
+        pass
+        
+    seqtrim_job = Popen(cmd)
+
     seqtrim_job.name = "TRIM"
     seqtrim_job.output = outputFile
     seqtrim_job.DIR = DIR
@@ -113,7 +124,7 @@ def seqTrimCollect(trimObj, clean = True):
     outputFile = trimObj.DIR + "/" + trimObj.output
     timeFile = outputFile + ".time";
 
-    o,e = trimObj.getResults(clean)
+    o,e = trimObj.communicate()
     try:
         time = float(open(timeFile).readline().rstrip("\n"))
     except:
@@ -152,33 +163,25 @@ def seqCleanJob(inputFile, outputPrefix, nodes = 1, ppn = 1, l = 25, DIR = ".", 
     cmd = " ".join([cmd1, cmd2, cmd3, cmd4, cmd5]);
 
     
-    """
-    Jamie Code: subprocess
-    """
-    ##############
     if (terminate):   # For debugging
-       print cmd
+       print(cmd)
        exit(1)
+
+    modules = ["blast", "seqclean"]
+    try:
+        set_pbs_defaults({'nodes':1,'ppn':1,'output_location':DIR,'RHmodules':modules,'walltime':'1:00:00'})
+    except:
+        pass
+
+
     seqclean_job = subprocess.Popen(cmd,shell=True, stdin = subprocess.PIPE, stdout = subprocess.PIPE)
     seqclean_job.wait()
-    return [DIR + "/" + inputFile, DIR + "/" +outputFile,DIR + "/" +outputFile+".time"]
-    ##############
 
-    """
-    Karro Code: redhawk script
-    """
-    # if terminate:
-    #     print cmd
-    #     exit(1)
-    # modules = ["blast", "seqclean"]
-  
-    # seqclean_job = pbsJobHandler(batch_file = bfile, executable = cmd, nodes = 1, ppn = 1, output_location = DIR,
-    #                              RHmodules = modules, walltime = "01:00:00")
-    # seqclean_job.name = "CLEAN"
-    # seqclean_job.outputPrefix = outputPrefix + "." + str(id)
-    # seqclean_job.DIR = DIR
-    # seqclean_job.inputFile = inputFile
-    # return seqclean_job.submitjob()
+
+    seqclean_job.communicate()
+
+    return [DIR + "/" + inputFile, DIR + "/" +outputFile,DIR + "/" +outputFile+".time"]
+    
 
 
 
@@ -188,7 +191,7 @@ def seqCleanCollect(cleanObj, clean = True):
     inputFile = scopaObj[0]
     outputFile = scopaObj[1]
     timeFile = scopaObj[2]
-    return [0.0, izip(SeqIO.parse(open(inputFile)), "fasta"),open(outputFile)]
+    return [0.0, zip(SeqIO.parse(open(inputFile)), "fasta"),open(outputFile)]
 
     inputFile = cleanObj.DIR + "/" + cleanObj.inputFile
     outputFile = cleanObj.DIR + "/" + cleanObj.outputPrefix + ".cln"
@@ -202,7 +205,7 @@ def seqCleanCollect(cleanObj, clean = True):
         exit(1)
     #if e.rstrip():
     #    raise RuntimeError("Error in CLEAN execution:\n" + e + "\n");
-    return [time, izip(SeqIO.parse(open(inputFile), "fasta"), open(outputFile))]
+    return [time, zip(SeqIO.parse(open(inputFile), "fasta"), open(outputFile))]
 
 # Take the list of sequence records and return a list of results
 seqCleanRE = re.compile("(id\d+).*\d+(?:\.\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)")
@@ -243,7 +246,7 @@ def polyJob(inputFile, outputPrefix, DIR = ".", bfile = "test_trimpoly.job", id 
     Jamie Code: subprocess
     """
     if (terminate):
-        print cmd
+        print(cmd)
         exit(1)
     seqclean_job = subprocess.Popen(cmd, shell=True, stdin = subprocess.PIPE, stdout = subprocess.PIPE)
     seqclean_job.wait()
@@ -255,7 +258,7 @@ def polyJob(inputFile, outputPrefix, DIR = ".", bfile = "test_trimpoly.job", id 
     Karro COde: redhawk
     """
     if terminate:
-        print cmd
+        print(cmd)
         exit(1)
     modules = ["seqclean"]
     
@@ -270,7 +273,7 @@ def polyCollect(trimPolyObj, clean = True):
     inputFile = trimPolyObj[0]
     outputFile = trimPolyObj[1]
     timeFile = trimPolyObj[2]
-    return [0.0, izip(SeqIO.parse(open(inputFile), "fasta"), open(outputFile))]
+    return [0.0, zip(SeqIO.parse(open(inputFile), "fasta"), open(outputFile))]
 
     inputFile = trimPolyObj.DIR + "/" + trimPolyObj.inputFile
     outputFile = trimPolyObj.DIR + "/" + trimPolyObj.outputPrefix + "_details.out"
@@ -283,7 +286,7 @@ def polyCollect(trimPolyObj, clean = True):
         stderr.write("TrimPoly failed\n")
         exit(1)
     
-    return [time, izip(SeqIO.parse(open(inputFile), "fasta"), open(outputFile))]
+    return [time, zip(SeqIO.parse(open(inputFile), "fasta"), open(outputFile))]
 
 def parsePolyInfo(next_seq, id_parser):
     return parseCleanInfo(next_seq, id_parser)
@@ -296,7 +299,7 @@ def trimestJob(inputFile, outputPrefix, DIR = ".", bfile = "test_trimest.job", i
     cmd2 = "./wrapper.py \"trimest -noreverse -sequence %s -mismatches 10 -outseq %s\"" % (DIR + "/" + inputFile, DIR + "/" + outputPrefix + ".out")
     cmd = " ".join([cmd1, cmd2])
     if terminate:
-        print cmd
+        print(cmd)
         exit(1)
     modules = ["emboss"]
 
@@ -320,7 +323,7 @@ def trimestCollect(trimestObj, clean = True):
         stderr.write("trimest failed\n")
         exit(1)
 
-    return [time, izip(SeqIO.parse(open(inputFile), "fasta"), SeqIO.parse(open(outputFile), "fasta"))]
+    return [time, zip(SeqIO.parse(open(inputFile), "fasta"), SeqIO.parse(open(outputFile), "fasta"))]
 
 embossReg = re.compile("\[poly-([AT]) tail removed\]")
 def parseTrimestInfo(next_seq, id_parser):

@@ -23,7 +23,7 @@ class SCOPE{
  public:
 
   static build_ghmm buildHMM(char polymerType);
-  static bool baumWelchTrain(build_ghmm& model);
+  static bool baumWelchTrain(build_ghmm& model, std::vector<string>& training_seqs);
 
   static void detect(ifstream& in,
 		     ostream& fastaout, //Output fasta / fastq

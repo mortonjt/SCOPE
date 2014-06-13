@@ -17,7 +17,8 @@ import pickle
 from argparse import *
 import pwd
 import datetime
-import cPickle
+import pickle
+import tempfile
 
 uid = os.getuid()
 current_user = pwd.getpwuid(uid)[0]  # When run on redhawk with a nohup, os.getlogin() does not work
@@ -42,6 +43,14 @@ echo "" >&2
 exit 0
 """
 
+# pbs_defaults defines the default values for the class constructor.
+pbs_defaults = {'use_pid':True, 'job_name':None, 'nodes':1, 'ppn':1, 'mem':False, 'walltime':"40:00:00", 'address':None, 'join':False, 'env':None, 'queue':None, 'mail':None, 'output_location':None, 'chdir':None, 'RHmodules':None, 'file_limit':6, 'file_delay':5, 'epilogue_file':None}
+
+def set_pbs_defaults(D):
+    for k,v in D.items():
+        pbs_defaults [k] = v
+
+
 class RedhawkError(Exception):
     def __init__(self, value):
         self.value = value
@@ -51,7 +60,10 @@ class RedhawkError(Exception):
 class pbsJobHandler:
     """A pbsJobHandler corresponds to a job launched (or to be launched) on redhawk.  Once the object is created (and provided with a command-line execution command),
        the user can extract various inforamtion about the job (current status, output, etc...) and cleanup files."""
-    def __init__(self, batch_file, executable, use_pid = True, job_name = None, nodes = 1, ppn = 1, mem = False, walltime = "40:00:00", address = None, join = False, env = None, queue = None, mail = None, output_location = None, chdir = None, RHmodules = None, file_limit = 6, file_delay = 5, epilogue_file = None): 
+    def __init__(self, batch_file, executable, use_pid = pbs_defaults['use_pid'], job_name = pbs_defaults['job_name'], nodes = pbs_defaults['nodes'], ppn = pbs_defaults['ppn'], 
+                 mem = pbs_defaults['mem'], walltime = pbs_defaults['walltime'], address = pbs_defaults['address'], join = pbs_defaults['join'], env = pbs_defaults['env'], 
+                 queue = pbs_defaults['queue'], mail = pbs_defaults['mail'], output_location = pbs_defaults['output_location'], chdir = pbs_defaults['chdir'], 
+                 RHmodules = pbs_defaults['RHmodules'], file_limit = pbs_defaults['file_limit'], file_delay = pbs_defaults['file_delay'], epilogue_file = pbs_defaults['epilogue_file']):
         """Constructor.  Requires a file name for the batch file, and the execution command.  Optional parmeters include:
            * use_pid: will embded a process id into the batch file name if true.  Default = true.
            * job_name: A name for the redhawk name.  Default = the batch file name.
@@ -384,6 +396,13 @@ class pbsJobHandler:
         """Legacy"""
         return self.get_results(cleanup)
 	
+    def communicate(self, input = None):
+        """Parallel to the subprocess.Popen.communicate method.  Always cleans up"""
+        assert input == None, "Cannot use input parameter with pbsJobHandler.communicate()"
+        self.wait()
+        return self. get_results()
+
+
     def loadResources(self):
         if not self.resources:
             self.wait()
@@ -464,12 +483,24 @@ def get_number_of_jobs_in_queue(user=current_user):
 
 def storePBS(pbsList, fp):
     """Pickle and save a PBS job to a specified file pointer."""
-    cPickle.dump(pbsList, fp)
+    pickle.dump(pbsList, fp)
 
 def loadPBS(fp):
     """Recover a list of pickled jobs from a specified file pointer."""
-    return cPickle.load(fp)
+    return pickle.load(fp)
 
+def Popen(cmd, shell, batch_file = None, stdin = None, stdout = None, stderr = None):
+    """Parallel to the subprocess.Popen.  Will use a randomly generated batchfile name (in current dir) if not specified.
+    All other parameters are default.
+    * If shell of false: assume cmd will be a list, when is then joined with " "
+    * stdout and stderr are *ignored*.
+    """
+    if not shell:
+        cmd = " ".join(cmd)
+
+    if not batch_file:
+        batch_file = '/var/folders/4y/cc6kbbq16g10q22_hskf1h8rlsjht9/T/tmpxqc0_p'
+    return pbsJobHandler(batch_file = batch_file, executable = executable)
 
 def relaunch(args = sys.argv, force = False, walltime = "40:00:00", python = "python"):
     """Detects whether program is being run on the head node.  If so, relaunch identical program on a compute node and quit."""
