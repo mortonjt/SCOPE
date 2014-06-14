@@ -46,6 +46,8 @@ exit 0
 # pbs_defaults defines the default values for the class constructor.
 pbs_defaults = {'use_pid':True, 'job_name':None, 'nodes':1, 'ppn':1, 'mem':False, 'walltime':"40:00:00", 'address':None, 'join':False, 'env':None, 'queue':None, 'mail':None, 'output_location':None, 'chdir':None, 'RHmodules':None, 'file_limit':6, 'file_delay':5, 'epilogue_file':None}
 
+PIPE = None;    # Not used -- variable needs to be defined to parallel subprocess.
+
 def set_pbs_defaults(D):
     for k,v in D.items():
         pbs_defaults [k] = v
@@ -399,6 +401,7 @@ class pbsJobHandler:
     def communicate(self, input = None):
         """Parallel to the subprocess.Popen.communicate method.  Always cleans up"""
         assert input == None, "Cannot use input parameter with pbsJobHandler.communicate()"
+        self.submit()
         self.wait()
         return self. get_results()
 
@@ -499,8 +502,8 @@ def Popen(cmd, shell, batch_file = None, stdin = None, stdout = None, stderr = N
         cmd = " ".join(cmd)
 
     if not batch_file:
-        batch_file = '/var/folders/4y/cc6kbbq16g10q22_hskf1h8rlsjht9/T/tmpxqc0_p'
-    return pbsJobHandler(batch_file = batch_file, executable = executable)
+        batch_file = tempfile.NamedTemporaryFile(dir=".").name
+    return pbsJobHandler(batch_file = batch_file, executable = cmd)
 
 def relaunch(args = sys.argv, force = False, walltime = "40:00:00", python = "python"):
     """Detects whether program is being run on the head node.  If so, relaunch identical program on a compute node and quit."""
@@ -535,7 +538,6 @@ if __name__ == "__main__":
     settings.add_argument('-m', '--modules', action = "store", type = str, nargs = "+", dest = "RHmodules", help = "required redhawk modules", default = None)
     settings.add_argument('-O', '--output_location', action = "store", type = str, dest = "output_location", help = "Output location", default = None)
     settings.add_argument('-d', '--dir', action = "store", type = str, dest = "target_directory", help = "target directory", default = None)
-
 
     settings2 = parser.add_argument_group("Less important job-related settings")
     settings2.add_argument('-b', '--batch', action = "store", type = str, dest = "batch", help="Batch file name", default = "redhawk_run")

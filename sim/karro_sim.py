@@ -257,26 +257,26 @@ def analysis(records, analysis_function, polyType, options):
     total_pos = tp + fn
     total_neg = fp + tn
     if len(trim) > 0:
-        pct_correct = len(filter(lambda x: x==0, trim)) / float(len(trim))
+        pct_correct = len(list(filter(lambda x: x==0, trim))) / float(len(trim))
         avg_trim = mean(trim)
         median_trim = scipy.median(trim)
-        SoS_trim = mean(map(lambda x : x*x, [t for t in trim if t != 0])) / len([t for t in trim]) # if t != 0])
-        pct_correct_left = len(filter(lambda x: x==0, left_trim)) / float(len(left_trim))
+        SoS_trim = mean([t*t for t in trim if t != 0]) / len([t for t in trim]) # if t != 0])
+        pct_correct_left = len(list(filter(lambda x: x==0, left_trim))) / float(len(left_trim))
         avg_left = mean(left_trim)
 
-        SoS_left = mean(map(lambda x : x*x, [t for t in left_trim if t != 0])) / len([t for t in left_trim])
+        SoS_left = mean([t*t for t in left_trim if t != 0]) / len([t for t in left_trim])
         median_left = scipy.median(left_trim)
-        pct_correct_right = len(filter(lambda x: x==0, right_trim)) / float(len(right_trim)) if float(len(right_trim)) else -1
+        pct_correct_right = len(list(filter(lambda x: x==0, right_trim))) / float(len(right_trim)) if float(len(right_trim)) else -1
         avg_right = mean(right_trim)
-        SoS_right = mean(map(lambda x : x*x, [t for t in right_trim if t != 0])) / len([t for t in right_trim]) # if t != 0])
+        SoS_right = mean([t*t for t in right_trim if t != 0]) / len([t for t in right_trim]) # if t != 0])
         median_right = scipy.median(right_trim)
 
-        overArr = filter(lambda x : x > 0, trim)
+        overArr = list(filter(lambda x : x > 0, trim))
         pct_over = len(overArr) / float(len(trim))
         avg_over = mean(overArr) if len(overArr) > 0 else -99999
         median_over = scipy.median(overArr) if len(overArr) > 0 else -99999
 
-        underArr = filter(lambda x : x < 0, trim)
+        underArr = list(filter(lambda x : x < 0, trim))
         pct_under = len(underArr) / float(len(trim))
         avg_under = mean(underArr) if len(underArr) > 0 else -99999
         median_under = scipy.median(underArr) if len(underArr) > 0 else -99999
@@ -317,7 +317,7 @@ def launch_jobs(options):
         CLEAN = seqCleanJob(options.sim_file, "CLEAN", DIR = options.outputDir, terminate=options.terminate) if options.CLEAN else None
         POLY = polyJob(options.sim_file, "POLY", DIR = options.outputDir, terminate=options.terminate) if options.POLY else None
         TRIMEST = trimestJob(options.sim_file, "TRIMEST", DIR = options.outputDir, terminate=options.terminate) if options.TRIMEST else None
-        BASICTOOL = basicJob(options.sim_file, "BASICTOOL", DIR = options.outputDir, terminate=options.terminate) if options.BASICTOOL else None
+        BASICTOOL = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, terminate=options.terminate) if options.BASICTOOL else None
 
         #for o in [SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST]:
         #    if o:
@@ -392,6 +392,46 @@ def basicSim(options, args):
         stats = analysis(results, parseBasicInfo, options.polyType, options)
         printResults(fp, "BASICTOOL", [time] + stats)
 
+def scopeVbasic(options, args):
+    
+    fp = sys.stdout if options.output == None else open(options.output, "w")
+    if not options.Header_off:
+        fp.write(('{:<7}'*1).format('e') + ('{:<14}'*len(column_names)).format(*column_names) + "\n")
+
+    error_start, error_stop, error_step = 0, 0.1001, 0.001
+    p_start, p_stop, p_step = 0, 0.10001, 0.01
+
+    for error in arange(error_start, error_stop, error_step):
+        options.error_rate = error
+        real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
+
+        if (options.Liang_data):
+            shutil.copyfile(options.Liang_data, options.outputDir + "/" + options.sim_file)
+        elif (options.real):
+            real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
+        else:
+            simulation(*[getattr(options,v) for v in ["sim_file", "n", "outputDir", "basis", "polyType"]]);
+    
+        m = None
+        w,b,x = options.params;
+
+        SCOPA   = scopaJob(inputFile = options.sim_file, e = None, t = options.polyType, w =w, d = None, m = m, b = b, x = x, n = None, k=None, outputFile = "SCOPA.out.%s" % options.id, DIR=options.outputDir, 
+                           minIdentity=options.minIdentity, terminate=options.terminate, no_retrain=True, front_gap=options.front_gap, poly=options.poly, numTrain=options.numTrain) if options.SCOPA else None
+
+        time, results = scopaCollect(SCOPA, False)
+        stats = analysis(results, parseScopaInfo, options.polyType, options)
+        fp.write(('{:<7}'*2).format(-1, error))
+        printResults(fp, "SCOPA", [time] + stats);
+
+        for p in arange(p_start, p_stop, p_step):
+            print(error, p)
+            BASICTOOL = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, base_type = options.polyType, min_length = 20, p = 0, format = 'fasta', end = '3' if options.polyType == 'A' else '5', terminate=options.terminate) if options.BASICTOOL else None
+
+            time, results = basicCollect(BASICTOOL, not options.keep_files)
+            stats = analysis(results, parseBasicInfo, options.polyType, options)
+            fp.write(('{:<7}'*2).format(p, error))
+            printResults(fp, "BASICTOOL", [time] + stats)
+
 
 def error_variation(options, args):
     fp = sys.stdout if options.output == None else open(options.output, "w")
@@ -403,15 +443,18 @@ def error_variation(options, args):
     step = options.error_range[2]
 
     for error in arange(start, stop, step):
+        print("ERROR: %s" % str(error))
         options.error_rate = error
         real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
         SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST, BASICTOOL = launch_jobs(options)
+        print("LAUNCHED\n")
 
         if options.SCOPA:
             time, results = scopaCollect(SCOPA, False)
             stats = analysis(results, parseScopaInfo, options.polyType, options)
             fp.write(('{:<7}'*1).format(error))
             printResults(fp, "SCOPA", [time] + stats);
+            print("SCOPE done")
         if options.SCOPABW:
             time, results = scopaCollect(SCOPABW, False)
             stats = analysis(results, parseScopaInfo, options.polyType, options)
@@ -442,6 +485,7 @@ def error_variation(options, args):
             stats = analysis(results, parseBasicInfo, options.polyType, options)
             fp.write(('{:<7}'*1).format(error))
             printResults(fp, "BASICTOOL", [time] + stats)
+            print("BASIC DONE")
 
 def endLengthSim(options, args):
     """Look at the effect of variation in theo length of the post-fragment tail"""
@@ -720,6 +764,7 @@ if __name__ == "__main__":
     toolGroup.add_option("-E", "--error_variation", action="store_const", const = "error_variation", dest="run_type", help="Vary simulation error rate", default = "basicSim")
     toolGroup.add_option("--PTL", "--post_tail_length", action="store_const", const = "endLengthSim", dest="run_type", help="Effect of variation of the post-tail fragment length", default= "basicSim")
     toolGroup.add_option("--len_test", action="store_const", const="lenTest", dest="run_type", help="Effect of variation of both the post-tail fragment length and the poly(A) length", default= "basicSim")
+    toolGroup.add_option("--SB", "--scopeVbasic", action="store_const", const="scopeVbasic", dest = "run_type", help = "Test SCOPE against Basic at various levels of p")
 
     scopeGroup = OptionGroup(parser, "SCOPE++ parameters")
     parser.add_option_group(scopeGroup)

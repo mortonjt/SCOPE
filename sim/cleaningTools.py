@@ -9,7 +9,7 @@ import os
 from sys import stderr,exit
 
 #
-#### Import redhawk if running on redhawk and want to batch jobs in parallel.  Otherwise import subprocess.
+#### Import redhawk if running on redhawk and want to batch jobs in parallel.  Otherwise import 
 #
 
 #from redhawk import *
@@ -32,13 +32,14 @@ class ScopeError(Exception):
 def basicJob(inputFile, outputFile, x = 2, DIR = ".", base_type = 'A', min_length = 10, p = 0.05, format = 'fasta', end = 3, terminate = False):
 
     #basic_command = "module load python.2.7; python2.7 ../basic/basic_clean.py -x {x} -e {e} -t {t} -m {m} -p {p} -f {format} {inputFile} {outputFile}".format(x=x, e=end, t=base_type, m=min_length, p=p, format=format, inputFile=DIR + "/" + inputFile, outputFile=outputFile)
-    basic_command = "python2.7 ../basic/basic_clean.py -x {x} -e {e} -t {t} -m {m} -p {p} -f {format} {inputFile} {outputFile}".format(x=x, e=end, t=base_type, m=min_length, p=p, format=format, inputFile=DIR + "/" + inputFile, outputFile=DIR + "/" + outputFile)
+    basic_command = "python3.3 ../basic/basic_clean.py -x {x} -e {e} -t {t} -m {m} -p {p} -f {format} {inputFile} {outputFile}".format(x=x, e=end, t=base_type, m=min_length, p=p, format=format, inputFile=DIR + "/" + inputFile, outputFile=DIR + "/" + outputFile)
     #timed_command = "/usr/bin/time -f {time_format} -o {cmd}".format(time_format = "%U", cmd = "basic_cmmand")
 
     if (terminate): # For debugging
+        print(basic_command)
         exit(1)
     
-    basicObj = Popen(basic_command, shell = True, stdin = subprocess.PIPE, stdout = subprocess.PIPE);
+    basicObj = Popen(basic_command, shell = True, stdin = PIPE, stdout = PIPE);
     basicObj.output = DIR + "/" + outputFile
     return basicObj
     
@@ -64,15 +65,12 @@ def scopaJob(inputFile, outputFile, z="", s = None, f = None, r = None, d = None
              bfile = "test_scopa.job", front_gap = None, poly = True, terminate = False, left_gap = None, right_gap = None, 
              homopolymer_type = None, numTrain = None, minIdentity = None):
 
-
     # Compensate for difference in parameters between version <=14 and version >= 15
     no_retrain = " " if no_retrain else None
     if poly:
         poly = " "
     else:
         poly = None
-
-    #cmd = "/usr/bin/time -f %s -o %s ../src/SCOPE++ -i %s  -o %s" % ("%U", DIR + "/" + outputFile + ".time", DIR + "/" + inputFile, DIR + "/" + outputFile) + " "+ "  ".join(["%s%s %s" % ("-" if len(o)==1 else "--", o, str(eval(o))) for o in scopa_params if not eval(o) == None])
 
 
     cmd = "../src/SCOPE++ -i {input_file} -o {output_file}".format(input_file = DIR + "/" + inputFile, output_file = DIR + "/" + outputFile)
@@ -84,7 +82,8 @@ def scopaJob(inputFile, outputFile, z="", s = None, f = None, r = None, d = None
         print(cmd[cmd.find("../SCOPA"):])
         exit(1)
 
-    scopa_job = Popen(cmd, shell=True, stdin = subprocess.PIPE, stdout = subprocess.PIPE)
+
+    scopa_job = Popen(cmd, shell=True, stdin = PIPE, stdout = PIPE)
     scopa_job.output = DIR + "/" + outputFile + ".tab"
     return scopa_job
 
@@ -174,7 +173,7 @@ def seqCleanJob(inputFile, outputPrefix, nodes = 1, ppn = 1, l = 25, DIR = ".", 
         pass
 
 
-    seqclean_job = subprocess.Popen(cmd,shell=True, stdin = subprocess.PIPE, stdout = subprocess.PIPE)
+    seqclean_job = Popen(cmd,shell=True, stdin = PIPE, stdout = PIPE)
     seqclean_job.wait()
 
 
@@ -248,7 +247,7 @@ def polyJob(inputFile, outputPrefix, DIR = ".", bfile = "test_trimpoly.job", id 
     if (terminate):
         print(cmd)
         exit(1)
-    seqclean_job = subprocess.Popen(cmd, shell=True, stdin = subprocess.PIPE, stdout = subprocess.PIPE)
+    seqclean_job = Popen(cmd, shell=True, stdin = PIPE, stdout = PIPE)
     seqclean_job.wait()
     return [DIR + "/" + inputFile, DIR + "/" + outputPrefix + "_details.out", DIR + "/" + outputPrefix + ".time"]
     ##################

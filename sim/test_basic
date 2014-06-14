@@ -1,0 +1,13 @@
+echo "Start";
+python3.3 ./karro_sim.py --SB -R Chlamy 454 A -o Chl.A.svb.out -m 20
+echo "Chl A";
+python3.3 ./karro_sim.py --SB  -R Chlamy 454 T -o Chl.T.svb.out -m 20 
+echo "Chl T";
+python3.3 ./karro_sim.py --SB  -R Arabidopsis Illumina A -o Ara.A.svb.out -m 20
+echo "Ara A";
+python3.3 ./karro_sim.py --SB  -R Arabidopsis Illumina T -o Ara.T.svb.out -m 20 
+echo "Ara T";
+python3.3 ./karro_sim.py --SB  -R Human Sanger A -o Human.A.svb.out -m 20
+echo "Hum A";
+python3.3 ./karro_sim.py --SB  -R Human Sanger T -o Human.T.svb.out -m 20 
+echo "Hum T";
