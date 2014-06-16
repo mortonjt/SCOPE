@@ -1,11 +1,12 @@
- tools = c("SCOPA", "SCOPABW", "CLEAN", "TRIM", "POLY", "TRIMEST")
-tools.name = c("Scope", "Scope+bw", "SeqClean", "SeqTrim", "TrimPoly", "TrimEst"); names(tools.name) = tools
-colors = c("blue", "black", "red", "yellow", "green", "purple"); names(colors) = tools
+tools = c("SCOPA", "SCOPABW", "CLEAN", "TRIM", "POLY", "TRIMEST", "BASICTOOL")
+tools.name = c("Scope", "Scope+bw", "SeqClean", "SeqTrim", "TrimPoly", "TrimEst", "BASIC"); names(tools.name) = tools
+colors = c("blue", "black", "red", "yellow", "green", "purple", "orange"); names(colors) = tools
 orgs = c("Ara", "Chl", "Human")
 orgs.name = c("Arabidopsis", "Chlamydomonus", "Human"); names(orgs.name) = orgs
 tech = c("Illumina", "454", "Sanger"); names(tech) = orgs
 
-current_tools = c("SCOPA", "POLY", "TRIMEST")
+current_tools = c("SCOPA", "POLY", "TRIMEST", "BASIC")
+
 
 ######### Old 
 create.frames <- function(file, obj = "pct_crt", xmin = 0, xmax = Inf, bmin = 0, bmax = Inf, wmin = 0, wmax = Inf, mmin = 0, mmax = Inf) {
@@ -110,6 +111,25 @@ plotError.sen <- function(org, type, usedTools = current_tools, print.legend = T
   }
 }
 
+ScopeVBasic <- function(org, type, field, y.lim = FALSE) {
+    s <- paste(org, type, "svb", "out", sep = ".")
+    F <- read.table(s, header = TRUE)
+
+    F <- F[F$name %in% c('BASICTOOL', 'SCOPA'),]
+
+    if (length(y.lim)==1) {
+        y.lim = range(F[,field]);
+    }
+
+    plot(c(), c(), xlim = range(F$e), ylim = y.lim, xlab = "Base Call Error Rate", ylab, main="NEED LABEL")
+    
+    # Print SCOPE
+    lines(F[F$name=='SCOPA', 'e'], F[F$name=='SCOPA', field], col = colors['SCOPA'])
+    for (p in sort(unique(F$p))) {
+      lines(F[F$name=='BASICTOOL' & F$p==p,'e'], F[F$name=='BASICTOOL' & F$p==p,field])
+    }
+}
+
 plotError.correct <- function(org, type, usedTools = current_tools, print.legend = TRUE, main.msg=FALSE, y.lim = FALSE) {
   F <- read.table(paste(org, type, "error", "out", sep = "."), header=TRUE)
   #return(F)
@@ -146,6 +166,8 @@ plotError.both <- function(orgs, types, usedTools = tools, print.legend = 0) {
     }
   }
 }
+
+
 
 plotError.manuscript <- function(usedTools = tools) {
   quartz(width=10, height = 5);
