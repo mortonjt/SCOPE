@@ -396,7 +396,7 @@ def scopeVbasic(options, args):
     
     fp = sys.stdout if options.output == None else open(options.output, "w")
     if not options.Header_off:
-        fp.write(('{:<7}'*1).format('e') + ('{:<14}'*len(column_names)).format(*column_names) + "\n")
+        fp.write(('{:<7}'*2).format('p', 'e') + ('{:<14}'*len(column_names)).format(*column_names) + "\n")
 
     error_start, error_stop, error_step = 0, 0.1001, 0.001
     p_start, p_stop, p_step = 0, 0.10001, 0.01
@@ -425,11 +425,11 @@ def scopeVbasic(options, args):
 
         for p in arange(p_start, p_stop, p_step):
             print(error, p)
-            BASICTOOL = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, base_type = options.polyType, min_length = 20, p = 0, format = 'fasta', end = '3' if options.polyType == 'A' else '5', terminate=options.terminate) if options.BASICTOOL else None
+            BASICTOOL = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, base_type = options.polyType, min_length = 20, p = p, format = 'fasta', end = '3' if options.polyType == 'A' else '5', terminate=options.terminate) if options.BASICTOOL else None
 
             time, results = basicCollect(BASICTOOL, not options.keep_files)
             stats = analysis(results, parseBasicInfo, options.polyType, options)
-            fp.write(('{:<7}'*2).format(p, error))
+            fp.write(('{:<7}'*2).format(round(p,3), error))
             printResults(fp, "BASICTOOL", [time] + stats)
 
 
