@@ -317,7 +317,9 @@ def launch_jobs(options):
         CLEAN = seqCleanJob(options.sim_file, "CLEAN", DIR = options.outputDir, terminate=options.terminate) if options.CLEAN else None
         POLY = polyJob(options.sim_file, "POLY", DIR = options.outputDir, terminate=options.terminate) if options.POLY else None
         TRIMEST = trimestJob(options.sim_file, "TRIMEST", DIR = options.outputDir, terminate=options.terminate) if options.TRIMEST else None
-        BASICTOOL = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, terminate=options.terminate) if options.BASICTOOL else None
+        BASICTOOL1 = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, terminate=options.terminate, p=0.0) if options.BASICTOOL else None
+        BASICTOOL3 = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, terminate=options.terminate, p=0.05) if options.BASICTOOL else None
+        BASICTOOL1 = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, terminate=options.terminate, p=0.1) if options.BASICTOOL else None
 
         #for o in [SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST]:
         #    if o:
@@ -349,7 +351,7 @@ def launch_jobs(options):
         TRIMEST = loadPBS(open("last.trimest"))[0] if options.TRIMEST else None
         BASICTOOL = loadPBS(open("last.basictool"))[0] if options.BASICTOOL else None
 
-    return SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST, BASICTOOL
+    return SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST, BASICTOOL1, BASICTOOL2, BASICTOOL3
 
 
 def basicSim(options, args):
@@ -387,10 +389,18 @@ def basicSim(options, args):
         time, results = trimestCollect(TRIMEST, not options.keep_files)
         stats = analysis(results, parseTrimestInfo, options.polyType, options)
         printResults(fp, "TRIMEST", [time] + stats)
-    if options.BASICTOOL:
-        time, results = basicCollect(BASICTOOL, not options.keep_files)
+    if options.BASICTOOL1:
+        time, results = basicCollect(BASICTOOL1, not options.keep_files)
         stats = analysis(results, parseBasicInfo, options.polyType, options)
-        printResults(fp, "BASICTOOL", [time] + stats)
+        printResults(fp, "BASICTOOL1", [time] + stats)
+    if options.BASICTOOL2:
+        time, results = basicCollect(BASICTOOL2, not options.keep_files)
+        stats = analysis(results, parseBasicInfo, options.polyType, options)
+        printResults(fp, "BASICTOOL2", [time] + stats)
+    if options.BASICTOOL3:
+        time, results = basicCollect(BASICTOOL3, not options.keep_files)
+        stats = analysis(results, parseBasicInfo, options.polyType, options)
+        printResults(fp, "BASICTOOL3", [time] + stats)
 
 def scopeVbasic(options, args):
     

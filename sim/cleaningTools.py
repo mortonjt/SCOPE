@@ -30,7 +30,6 @@ class ScopeError(Exception):
 # Launch a basic_clean.py" job
 # Timing disabled
 def basicJob(inputFile, outputFile, x = 2, DIR = ".", base_type = 'A', min_length = 10, p = 0.05, format = 'fasta', end = 3, terminate = False):
-
     #basic_command = "module load python.2.7; python2.7 ../basic/basic_clean.py -x {x} -e {e} -t {t} -m {m} -p {p} -f {format} {inputFile} {outputFile}".format(x=x, e=end, t=base_type, m=min_length, p=p, format=format, inputFile=DIR + "/" + inputFile, outputFile=outputFile)
     basic_command = "python3.3 ../basic/basic_clean.py -x {x} -e {e} -t {t} -m {m} -p {p} -f {format} {inputFile} {outputFile}".format(x=x, e=end, t=base_type, m=min_length, p=p, format=format, inputFile=DIR + "/" + inputFile, outputFile=DIR + "/" + outputFile)
     #timed_command = "/usr/bin/time -f {time_format} -o {cmd}".format(time_format = "%U", cmd = "basic_cmmand")
@@ -73,14 +72,17 @@ def scopaJob(inputFile, outputFile, z="", s = None, f = None, r = None, d = None
         poly = None
 
 
+    print("HERE1")
     cmd = "../src/SCOPE++ -i {input_file} -o {output_file}".format(input_file = DIR + "/" + inputFile, output_file = DIR + "/" + outputFile)
     for o in scopa_params:
         if not (eval(o) is None):
             cmd += " %s%s %s" % ("-" if len(o) == 1 else "--", o, str(eval(o)))
 
     if (terminate):   # For debugging
-        print(cmd[cmd.find("../SCOPA"):])
+        print("HERE2")
+        print(cmd[cmd.find("SCOPE"):])
         exit(1)
+    print("HERE3")
 
 
     scopa_job = Popen(cmd, shell=True, stdin = PIPE, stdout = PIPE)
