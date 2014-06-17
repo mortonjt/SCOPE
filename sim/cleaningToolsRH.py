@@ -1,8 +1,8 @@
 #run!/usr/bin/python2.7
 from sys import *
-sys.path.append("../parse/")
+path.append("../parse/")
 
-from scope_parer import *
+from scope_parser import *
 from Bio import SeqIO
 from redhawk import pbsJobHandler
 import re

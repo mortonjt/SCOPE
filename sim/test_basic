@@ -1,0 +1,7 @@
+echo "Start";
+python3.3 ./karro_sim.py --SB -R Chlamy 454 A -o Chl.A.svb.out -m 100 > f1.txt
+echo "Chl A";
+python3.3 ./karro_sim.py --SB  -R Arabidopsis Illumina A -o Ara.A.svb.out -m 100 > f3.txt
+echo "Ara A";
+python3.3 ./karro_sim.py --SB  -R Human Sanger A -o Human.A.svb.out -m 100 > f5.txt
+echo "Hum A";
