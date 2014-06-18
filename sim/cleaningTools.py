@@ -48,7 +48,11 @@ def basicCollect(basicObject, clean = True):
         print(err.encode())
         assert False
 
-    return -1, scope_result_generator(SCOPEparser(None, basicObject.output))
+    try:
+        return -1, scope_result_generator(SCOPEparser(None, basicObject.output))
+    except:
+        print("ERROR Output: ", basicObject.output)
+        exit(1)
 
 def parseBasicInfo(next_seq, id_parser):
     seq_info, seq_len = id_parser(next_seq[0])
@@ -72,17 +76,14 @@ def scopaJob(inputFile, outputFile, z="", s = None, f = None, r = None, d = None
         poly = None
 
 
-    print("HERE1")
     cmd = "../src/SCOPE++ -i {input_file} -o {output_file}".format(input_file = DIR + "/" + inputFile, output_file = DIR + "/" + outputFile)
     for o in scopa_params:
         if not (eval(o) is None):
             cmd += " %s%s %s" % ("-" if len(o) == 1 else "--", o, str(eval(o)))
 
     if (terminate):   # For debugging
-        print("HERE2")
         print(cmd[cmd.find("SCOPE"):])
         exit(1)
-    print("HERE3")
 
 
     scopa_job = Popen(cmd, shell=True, stdin = PIPE, stdout = PIPE)
@@ -239,9 +240,7 @@ def parseCleanInfo(next_seq, id_parser):
 ##############################################
 # Launch a trimpoly job and return the pbsJobHandler object
 def polyJob(inputFile, outputPrefix, DIR = ".", bfile = "test_trimpoly.job", id = 0, terminate = False):
-    cmd1 = "/usr/bin/time -o %s -f \"%s\"" % (DIR + "/" + outputPrefix + ".time", "%U")
-    cmd2 = "./wrapper.py \"cat %s | trimpoly -o %s.out > %s_details.out\"" % (DIR + "/" + inputFile, DIR + "/" + outputPrefix, DIR+ "/" + outputPrefix)
-    cmd = " ".join([cmd1, cmd2])
+    cmd = "module load seqclean; cat %s | trimpoly -o %s.out > %s_details.out" % (DIR + "/" + inputFile, DIR + "/" + outputPrefix, DIR+ "/" + outputPrefix)
 
     """
     Jamie Code: subprocess
@@ -251,7 +250,7 @@ def polyJob(inputFile, outputPrefix, DIR = ".", bfile = "test_trimpoly.job", id 
         exit(1)
     seqclean_job = Popen(cmd, shell=True, stdin = PIPE, stdout = PIPE)
     seqclean_job.wait()
-    return [DIR + "/" + inputFile, DIR + "/" + outputPrefix + "_details.out", DIR + "/" + outputPrefix + ".time"]
+    return [DIR + "/" + inputFile, DIR + "/" + outputPrefix + "_details.out"]
     ##################
 
 
@@ -273,7 +272,7 @@ def polyJob(inputFile, outputPrefix, DIR = ".", bfile = "test_trimpoly.job", id 
 def polyCollect(trimPolyObj, clean = True):
     inputFile = trimPolyObj[0]
     outputFile = trimPolyObj[1]
-    timeFile = trimPolyObj[2]
+
     return [0.0, zip(SeqIO.parse(open(inputFile), "fasta"), open(outputFile))]
 
     inputFile = trimPolyObj.DIR + "/" + trimPolyObj.inputFile

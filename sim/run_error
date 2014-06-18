@@ -1,13 +1,13 @@
 echo "Start";
-python2.7 ./karro_sim.py -E --error_range 0 0.1 0.001 -R Chlamy 454 A -o Chl.A.error.out  -C -T --TE --sp_off -m 200
+python3.3 redhawk.py -S -b ChlA "python2.7 ./karro_sim.py -E --error_range 0 0.1 0.001 -R Chlamy 454 A -o Chl.A.error.out  -C -T --TE --sp_off -m 200"
 echo "Chl A";
-python2.7 ./karro_sim.py -E --error_range 0 0.1 0.001 -R Chlamy 454 T -o Chl.T.error.out  -C -T --TE --sp_off -m 200
+python3.3 redhawk.py -S -b ChlT "python2.7 ./karro_sim.py -E --error_range 0 0.1 0.001 -R Chlamy 454 T -o Chl.T.error.out  -C -T --TE --sp_off -m 200"
 echo "Chl T";
-python2.7 ./karro_sim.py -E --error_range 0 0.1 0.001 -R Arabidopsis Illumina A -o Ara.A.error.out  -C -T --TE --sp_off -m 200
+python3.3 redhawk.py -S -b AraA "python2.7 ./karro_sim.py -E --error_range 0 0.1 0.001 -R Arabidopsis Illumina A -o Ara.A.error.out  -C -T --TE --sp_off -m 200"
 echo "Ara A";
-python2.7 ./karro_sim.py -E --error_range 0 0.1 0.001 -R Arabidopsis Illumina T -o Ara.T.error.out  -C -T --TE --sp_off -m 200
+python3.3 redhawk.py -S -b AraT "python2.7 ./karro_sim.py -E --error_range 0 0.1 0.001 -R Arabidopsis Illumina T -o Ara.T.error.out  -C -T --TE --sp_off -m 200"
 echo "Ara T";
-python2.7 ./karro_sim.py -E --error_range 0 0.1 0.001 -R Human Sanger A -o Human.A.error.out  -C -T --TE --sp_off 200 -m 200
+python3.3 redhawk.py -S -b HumA "python2.7 ./karro_sim.py -E --error_range 0 0.1 0.001 -R Human Sanger A -o Human.A.error.out  -C -T --TE --sp_off -m 200"
 echo "Hum A";
-python2.7 ./karro_sim.py -E --error_range 0 0.1 0.001 -R Human Sanger T -o Human.T.error.out  -C -T --TE --sp_off  -m 200
+python3.3 redhawk.py -S -b HumT "python2.7 ./karro_sim.py -E --error_range 0 0.1 0.001 -R Human Sanger T -o Human.T.error.out  -C -T --TE --sp_off  -m 200"
 echo "Hum T";

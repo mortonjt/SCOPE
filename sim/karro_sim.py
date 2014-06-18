@@ -88,6 +88,7 @@ def id_parser(id):
 def read_validation_data(input_file, options):
     """Read in and parse data from a specified validation file"""
     O = []
+    num_positive = 0    # Wil hold the total number of sequences with poly(A) tails
     for mult in range(options.multiplier):
         for counter,r in enumerate(SeqIO.parse(input_file, "fasta")):
             if options.sim_size > 0 and counter >= options.sim_size:
@@ -158,6 +159,7 @@ def read_validation_data(input_file, options):
                         
 
             O.append(ESTFrag(label=str(counter) + ".a", seq_arr = seq_arr, seq_type = seq_type))    
+            num_positive += 1
             #print(O[-1].label, O[-1].seq_type, O[-1].seq_arr)
 
             if options.specificity_test:
@@ -172,19 +174,21 @@ def read_validation_data(input_file, options):
 
         #shuffle(O)
 
-    return O
+    return O, num_positive
 
 def real_data(outputFile, DIR, inputFile, options):
     """Convert a validation file to the needed format"""
     with open(DIR + "/" + outputFile, "w") as fp:
-        for o in read_validation_data(inputFile, options):
+        O, num_positive = read_validation_data(inputFile, options)
+        for o in O:
             fp.write(o.fastaString())
+    return real_data
 
 def timing_data(outputFile, DIR, inputFile, options, n):
     """Create an input file from a validation sequence where we choose n random sequences (with replacement)
     for purposes of checking runtime"""
     with open(DIR + "/" + outputFile, "w") as fp:
-        O = read_validation_data(inputFile, options)
+        O, num_positive = read_validation_data(inputFile, options)
         seqs = []
         IDmap = {}
         for i in range(n):
@@ -206,7 +210,7 @@ def hasOverlap(i1, i2):
 def mean(A, error_val = -1):
     return scipy.mean(A) if len(A) > 0 else error_val
 
-def analysis(records, analysis_function, polyType, options):
+def analysis(records, analysis_function, polyType, options, num_positive):
     """Read in the results of one of the tools and calculate certain statistics.
        fn is a function for reading in the results (e.g. cleangingTools.parseScopaInfo)
        """
@@ -237,10 +241,10 @@ def analysis(records, analysis_function, polyType, options):
             if len(predicted_list)==0:
                 tn += 1
             else:
-                fp += 1
+                fp += 1  
         else:
             if len(predicted_list)==0:
-                fn += 1
+                fn += 1  # this going to be ignored and realcualted based on the passed "num_positive" -- fn = num_positive - tp
             elif len(predicted_list) > 1:
                 split += 1
             else:
@@ -250,7 +254,7 @@ def analysis(records, analysis_function, polyType, options):
                 right_trim.append(predicted_list[0][2] - real_list[0][2])
                 trim.append(left_trim[-1] + right_trim[-1])
 
-
+    fn = num_positive - tp
     sensitivity = float(tp) / (tp + fn) if tp + fn > 0 else -1
     specificity = float(tn) / (tn + fp) if tn + fp > 0 else -1
 
@@ -298,7 +302,7 @@ def launch_jobs(options):
         if (options.Liang_data):
             shutil.copyfile(options.Liang_data, options.outputDir + "/" + options.sim_file)
         elif (options.real):
-            real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
+            num_posiive = real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
         else:
             simulation(*[getattr(options,v) for v in ["sim_file", "n", "outputDir", "basis", "polyType"]]);
     
@@ -317,9 +321,9 @@ def launch_jobs(options):
         CLEAN = seqCleanJob(options.sim_file, "CLEAN", DIR = options.outputDir, terminate=options.terminate) if options.CLEAN else None
         POLY = polyJob(options.sim_file, "POLY", DIR = options.outputDir, terminate=options.terminate) if options.POLY else None
         TRIMEST = trimestJob(options.sim_file, "TRIMEST", DIR = options.outputDir, terminate=options.terminate) if options.TRIMEST else None
-        BASICTOOL1 = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, terminate=options.terminate, p=0.0) if options.BASICTOOL else None
-        BASICTOOL3 = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, terminate=options.terminate, p=0.05) if options.BASICTOOL else None
-        BASICTOOL1 = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, terminate=options.terminate, p=0.1) if options.BASICTOOL else None
+        BASICTOOL1 = basicJob(options.sim_file, outputFile = "BASIC1.out.%s" % options.id, DIR = options.outputDir, terminate=options.terminate, p=0.0) if options.BASICTOOL else None
+        BASICTOOL2 = basicJob(options.sim_file, outputFile = "BASIC2.out.%s" % options.id, DIR = options.outputDir, terminate=options.terminate, p=0.05) if options.BASICTOOL else None
+        BASICTOOL3 = basicJob(options.sim_file, outputFile = "BASIC3.out.%s" % options.id, DIR = options.outputDir, terminate=options.terminate, p=0.1) if options.BASICTOOL else None
 
         #for o in [SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST]:
         #    if o:
@@ -367,46 +371,46 @@ def basicSim(options, args):
 
     if options.SCOPA:
         time, results = scopaCollect(SCOPA, not options.keep_files)
-        stats = analysis(results, parseScopaInfo, options.polyType, options)
+        stats = analysis(results, parseScopaInfo, options.polyType, options, num_positive)
         printResults(fp, "SCOPA", [time] + stats);
     if options.SCOPABW:
         time, results = scopaCollect(SCOPABW, not options.keep_files)
-        stats = analysis(results, parseScopaInfo, options.polyType, options)
+        stats = analysis(results, parseScopaInfo, options.polyType, options, num_positive)
         printResults(fp, "SCOPABW", [time] + stats);
     if options.CLEAN:
         time, results = seqCleanCollect(CLEAN, not options.keep_files)
-        stats = analysis(results, parseCleanInfo, options.polyType, options)
+        stats = analysis(results, parseCleanInfo, options.polyType, options, num_positive)
         printResults(fp, "CLEAN", [time] + stats)
     if options.TRIM:
         time, results = seqTrimCollect(TRIM, not options.keep_files)
-        stats = analysis(results, parseTrimInfo, options.polyType, options)
+        stats = analysis(results, parseTrimInfo, options.polyType, options, num_positive)
         printResults(fp, "TRIM", [time] + stats)  
     if options.POLY:
         time, results = polyCollect(POLY, not options.keep_files)
-        stats = analysis(results, parsePolyInfo, options.polyType, options)
+        stats = analysis(results, parsePolyInfo, options.polyType, options, num_positive)
         printResults(fp, "POLY", [time] + stats)
     if options.TRIMEST:
         time, results = trimestCollect(TRIMEST, not options.keep_files)
-        stats = analysis(results, parseTrimestInfo, options.polyType, options)
+        stats = analysis(results, parseTrimestInfo, options.polyType, options, num_positive)
         printResults(fp, "TRIMEST", [time] + stats)
     if options.BASICTOOL1:
         time, results = basicCollect(BASICTOOL1, not options.keep_files)
-        stats = analysis(results, parseBasicInfo, options.polyType, options)
+        stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive)
         printResults(fp, "BASICTOOL1", [time] + stats)
     if options.BASICTOOL2:
         time, results = basicCollect(BASICTOOL2, not options.keep_files)
-        stats = analysis(results, parseBasicInfo, options.polyType, options)
+        stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive)
         printResults(fp, "BASICTOOL2", [time] + stats)
     if options.BASICTOOL3:
         time, results = basicCollect(BASICTOOL3, not options.keep_files)
-        stats = analysis(results, parseBasicInfo, options.polyType, options)
+        stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive)
         printResults(fp, "BASICTOOL3", [time] + stats)
 
 def scopeVbasic(options, args):
     
     fp = sys.stdout if options.output == None else open(options.output, "w")
     if not options.Header_off:
-        fp.write(('{:<7}'*2).format('p', 'e') + ('{:<14}'*len(column_names)).format(*column_names) + "\n")
+        fp.write(('{:<5}'*2).format('p', 'e') + ('{:<14}'*len(column_names)).format(*column_names) + "\n")
 
     error_start, error_stop, error_step = 0, 0.1001, 0.001
     p_start, p_stop, p_step = 0, 0.10001, 0.01
@@ -430,7 +434,7 @@ def scopeVbasic(options, args):
 
         time, results = scopaCollect(SCOPA, False)
         stats = analysis(results, parseScopaInfo, options.polyType, options)
-        fp.write(('{:<7}'*2).format(-1, error))
+        fp.write(('{:<15}'*2).format(-1, error))
         printResults(fp, "SCOPA", [time] + stats);
 
         for p in arange(p_start, p_stop, p_step):
@@ -439,7 +443,7 @@ def scopeVbasic(options, args):
 
             time, results = basicCollect(BASICTOOL, not options.keep_files)
             stats = analysis(results, parseBasicInfo, options.polyType, options)
-            fp.write(('{:<7}'*2).format(round(p,3), error))
+            fp.write(('{:<15}'*2).format(round(p,3), error))
             printResults(fp, "BASICTOOL", [time] + stats)
 
 
@@ -456,7 +460,7 @@ def error_variation(options, args):
         print("ERROR: %s" % str(error))
         options.error_rate = error
         real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
-        SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST, BASICTOOL = launch_jobs(options)
+        SCOPA, SCOPABW, TRIM, CLEAN, POLY, TRIMEST, BASICTOOL1, BASICTOOL2, BASICTOOL3 = launch_jobs(options)
         print("LAUNCHED\n")
 
         if options.SCOPA:
@@ -491,10 +495,22 @@ def error_variation(options, args):
             fp.write(('{:<7}'*1).format(error))
             printResults(fp, "TRIMEST", [time] + stats)
         if options.BASICTOOL:
-            time, results = basicCollect(BASICTOOL, not options.keep_files)
+            time, results = basicCollect(BASICTOOL1, not options.keep_files)
             stats = analysis(results, parseBasicInfo, options.polyType, options)
             fp.write(('{:<7}'*1).format(error))
-            printResults(fp, "BASICTOOL", [time] + stats)
+            printResults(fp, "BASICTOOL1", [time] + stats)
+            print("BASIC DONE")
+
+            time, results = basicCollect(BASICTOOL2, not options.keep_files)
+            stats = analysis(results, parseBasicInfo, options.polyType, options)
+            fp.write(('{:<7}'*1).format(error))
+            printResults(fp, "BASICTOOL2", [time] + stats)
+            print("BASIC DONE")
+
+            time, results = basicCollect(BASICTOOL3, not options.keep_files)
+            stats = analysis(results, parseBasicInfo, options.polyType, options)
+            fp.write(('{:<7}'*1).format(error))
+            printResults(fp, "BASICTOOL3", [time] + stats)
             print("BASIC DONE")
 
 def endLengthSim(options, args):
