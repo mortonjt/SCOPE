@@ -124,8 +124,9 @@ ScopeVBasic <- function(org, type, field, y.lim = FALSE, p.range = NA) {
     plot(c(), c(), xlim = range(F$e), ylim = y.lim, xlab = "Base Call Error Rate", main="NEED LABEL")
 
     
-    if (is.na(p)):
-      p.range = sort(unique(F$p))
+    if (is.na(p.range)) {
+        p.range = sort(unique(F$p))
+    }
     
     # Print SCOPE
     lines(F[F$name=='SCOPA', 'e'], F[F$name=='SCOPA', field], col = colors['SCOPA'])
