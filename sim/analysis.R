@@ -111,7 +111,7 @@ plotError.sen <- function(org, type, usedTools = current_tools, print.legend = T
   }
 }
 
-ScopeVBasic <- function(org, type, field, y.lim = FALSE) {
+ScopeVBasic <- function(org, type, field, y.lim = FALSE, p.range = NA) {
     s <- paste(org, type, "svb", "out", sep = ".")
     F <- read.table(s, header = TRUE)
 
@@ -121,11 +121,16 @@ ScopeVBasic <- function(org, type, field, y.lim = FALSE) {
         y.lim = range(F[,field]);
     }
 
-    plot(c(), c(), xlim = range(F$e), ylim = y.lim, xlab = "Base Call Error Rate", ylab, main="NEED LABEL")
+    plot(c(), c(), xlim = range(F$e), ylim = y.lim, xlab = "Base Call Error Rate", main="NEED LABEL")
+
+    
+    if (is.na(p)):
+      p.range = sort(unique(F$p))
     
     # Print SCOPE
     lines(F[F$name=='SCOPA', 'e'], F[F$name=='SCOPA', field], col = colors['SCOPA'])
-    for (p in sort(unique(F$p))) {
+    for (p in p.range) {
+      print(p)
       lines(F[F$name=='BASICTOOL' & F$p==p,'e'], F[F$name=='BASICTOOL' & F$p==p,field])
     }
 }
