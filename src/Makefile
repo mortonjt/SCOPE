@@ -22,14 +22,14 @@ Viterbi.o: Viterbi.cpp Viterbi.h build_ghmm.h matrix.hh
 # The following three commands are for creating optimized executables
 # with a name indicating OS platform.  Use only for creating executables
 # for distribution.
-# SCOPE++.centOS: build_ghmm.cpp SCOPA.cpp Viterbi.cpp
-# 	${CC} -o SCOPE++.centOS build_ghmm.cpp SCOPA.cpp Viterbi.cpp -O3
+SCOPE++.centOS: build_ghmm.cpp SCOPE.cpp Viterbi.cpp
+	${CC} -o SCOPE++.centOS build_ghmm.cpp SCOPE.cpp Viterbi.cpp -O3
 
-# SCOPE++.osx: build_ghmm.cpp SCOPA.cpp Viterbi.cpp
-# 	${CC} -o SCOPE++.osx build_ghmm.cpp SCOPA.cpp Viterbi.cpp -O3
+SCOPE++.osx: build_ghmm.cpp SCOPE.cpp Viterbi.cpp
+	${CC} -o SCOPE++.osx build_ghmm.cpp SCOPE.cpp Viterbi.cpp -O3
 
-# SCOPE++.ubuntu: build_ghmm.cpp SCOPA.cpp Viterbi.cpp
-# 	${CC} -o SCOPE++.ubuntu build_ghmm.cpp SCOPA.cpp Viterbi.cpp -O3
+SCOPE++.ubuntu: build_ghmm.cpp SCOPE.cpp Viterbi.cpp
+	${CC} -o SCOPE++.ubuntu build_ghmm.cpp SCOPE.cpp Viterbi.cpp -O3
 
 
 ###############
