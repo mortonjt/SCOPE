@@ -111,28 +111,40 @@ plotError.sen <- function(org, type, usedTools = current_tools, print.legend = T
   }
 }
 
-ScopeVBasic <- function(org, type, field, y.lim = FALSE, p.range = NA) {
+ScopeVBasic <- function(org, type, field, x.lim = NA, y.lim = NA, p.range = NA, colors = NA) {    # Must have length(p.range) == length(colors)-1
     s <- paste(org, type, "svb", "out", sep = ".")
     F <- read.table(s, header = TRUE)
 
     F <- F[F$name %in% c('BASICTOOL', 'SCOPA'),]
 
-    if (length(y.lim)==1) {
-        y.lim = range(F[,field]);
+    if (length(x.lim) == 1) {
+        x.lim = range(F$e)
     }
-
-    plot(c(), c(), xlim = range(F$e), ylim = y.lim, xlab = "Base Call Error Rate", main="NEED LABEL")
+    
+    if (length(y.lim) == 1) {
+        y.lim = range(F[,field])
+    }
+    
+    plot(c(), c(), xlim = x.lim, ylim = y.lim, xlab = "Base Call Error Rate", main="NEED LABEL")
 
     
-    if (is.na(p)):
+    if (length(p.range) == 1) {
       p.range = sort(unique(F$p))
-    
+    } 
     # Print SCOPE
-    lines(F[F$name=='SCOPA', 'e'], F[F$name=='SCOPA', field], col = colors['SCOPA'])
+    lines(F[F$name=='SCOPA', 'e'], F[F$name=='SCOPA', field], col = colors[1])
+
+    i = 2
     for (p in p.range) {
-      print(p)
-      lines(F[F$name=='BASICTOOL' & F$p==p,'e'], F[F$name=='BASICTOOL' & F$p==p,field])
+      print(colors[i])
+      lines(F[F$name=='BASICTOOL' & F$p==p,'e'], F[F$name=='BASICTOOL' & F$p==p,field], col = colors[i])
+      i = i + 1
     }
+    
+    names = c('SCOPE', lapply(p.range, function(x) sprintf("Basic (p = %5.2f)", x)))
+    print(colors)
+    legend(x = "topleft", legend = names, col = colors, lty = c("solid")) #, lty = c("solid", "solid", "solid"))
+      
 }
 
 plotError.correct <- function(org, type, usedTools = current_tools, print.legend = TRUE, main.msg=FALSE, y.lim = FALSE) {

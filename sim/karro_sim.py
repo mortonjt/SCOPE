@@ -182,7 +182,7 @@ def real_data(outputFile, DIR, inputFile, options):
         O, num_positive = read_validation_data(inputFile, options)
         for o in O:
             fp.write(o.fastaString())
-    return real_data
+    return num_positive
 
 def timing_data(outputFile, DIR, inputFile, options, n):
     """Create an input file from a validation sequence where we choose n random sequences (with replacement)
@@ -412,19 +412,13 @@ def scopeVbasic(options, args):
     if not options.Header_off:
         fp.write(('{:<5}'*2).format('p', 'e') + ('{:<14}'*len(column_names)).format(*column_names) + "\n")
 
-    error_start, error_stop, error_step = 0, 0.1001, 0.001
-    p_start, p_stop, p_step = 0, 0.10001, 0.01
+    error_start, error_stop, error_step = 0, 0.1006, 0.01
+    p_start, p_stop, p_step = 0, 0.10006, 0.001
 
     for error in arange(error_start, error_stop, error_step):
         options.error_rate = error
-        real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
+        num_positive = real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
 
-        if (options.Liang_data):
-            shutil.copyfile(options.Liang_data, options.outputDir + "/" + options.sim_file)
-        elif (options.real):
-            real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
-        else:
-            simulation(*[getattr(options,v) for v in ["sim_file", "n", "outputDir", "basis", "polyType"]]);
     
         m = None
         w,b,x = options.params;
@@ -433,7 +427,7 @@ def scopeVbasic(options, args):
                            minIdentity=options.minIdentity, terminate=options.terminate, no_retrain=True, front_gap=options.front_gap, poly=options.poly, numTrain=options.numTrain) if options.SCOPA else None
 
         time, results = scopaCollect(SCOPA, False)
-        stats = analysis(results, parseScopaInfo, options.polyType, options)
+        stats = analysis(results, parseScopaInfo, options.polyType, options, num_positive)
         fp.write(('{:<15}'*2).format(-1, error))
         printResults(fp, "SCOPA", [time] + stats);
 
@@ -442,7 +436,7 @@ def scopeVbasic(options, args):
             BASICTOOL = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, base_type = options.polyType, min_length = 20, p = p, format = 'fasta', end = '3' if options.polyType == 'A' else '5', terminate=options.terminate) if options.BASICTOOL else None
 
             time, results = basicCollect(BASICTOOL, not options.keep_files)
-            stats = analysis(results, parseBasicInfo, options.polyType, options)
+            stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive)
             fp.write(('{:<15}'*2).format(round(p,3), error))
             printResults(fp, "BASICTOOL", [time] + stats)
 

@@ -19,8 +19,11 @@ class SCOPEparser(object):
         self.titles,self.starts,self.ends,self.ptypes = [],[],[],[]
         with open(self.tab,'r') as handle:
             for ln in handle:
-                toks = ln.rsplit()
-                title,st,end,ptype = toks[0],int(toks[1]),int(toks[2]),toks[3]
+                try:
+                    toks = ln.rsplit()
+                    title,st,end,ptype = toks[0],int(toks[1]),int(toks[2]),toks[3]
+                except:
+                    continue
                 self.titles.append(title)
                 self.starts.append(st)
                 self.ends.append(end)
