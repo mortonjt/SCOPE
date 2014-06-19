@@ -111,12 +111,12 @@ plotError.sen <- function(org, type, usedTools = current_tools, print.legend = T
   }
 }
 
-ScopeVBasic <- function(org, type, field, x.lim = NA, y.lim = NA, p.range = NA, colors = NA, xlab = NA, ylab = NA, main = NA) {    # Must have length(p.range) == length(colors)-1
+ScopeVBasic <- function(org, type, field, x.lim = NA, y.lim = NA, p.range = c(NA), colors = c(NA), xlab = NA, ylab = NA, main = NA, print.legend = FALSE) {    # Must have length(p.range) == length(colors)-1
     s <- paste(org, type, "svb", "out", sep = ".")
     F <- read.table(s, header = TRUE)
 
     F <- F[F$name %in% c('BASICTOOL', 'SCOPA'),]
-
+    
     if (length(x.lim) == 1) {
         x.lim = range(F$e)
     }
@@ -125,29 +125,38 @@ ScopeVBasic <- function(org, type, field, x.lim = NA, y.lim = NA, p.range = NA, 
         y.lim = range(F[,field])
     }
 
-    plot(c(), c(), xlim = x.lim, ylim = y.lim, xlab = ifelse(is.na(xlab), "Base Call Error Rate", xlab), ylab = ylab, main=main)
-
-    if (length(p.range) == 1) {
+    if (is.na(p.range[1])) {
       p.range = sort(unique(F$p))
     } 
+    
+    
+    if (is.na(colors[1])) {
+      colors = c('blue', rep('black', length(p.range)))
+    }
+    
+    plot(c(), c(), xlim = x.lim, ylim = y.lim, xlab = ifelse(is.na(xlab), "Base Call Error Rate", xlab), ylab = ylab, main=main)
+ 
 
     # Print SCOPE
     lines(F[F$name=='SCOPA', 'e'], F[F$name=='SCOPA', field], col = colors[1])
 
     i = 2
     for (p in p.range) {
-      print(colors[i])
+      print(F[F$name=='BASICTOOL' & F$p==p,'e'])
       lines(F[F$name=='BASICTOOL' & F$p==p,'e'], F[F$name=='BASICTOOL' & F$p==p,field], col = colors[i])
+      return(F)
       i = i + 1
     }
     
     names = c('SCOPE', lapply(p.range, function(x) sprintf("Basic (p = %5.2f)", x)))
-    print(colors)
-    legend(x = "bottomleft", legend = names, col = colors, lty = c("solid")) #, lty = c("solid", "solid", "solid"))
-      
+    
+    if (print.legend) {
+      legend(x = "bottomleft", legend = names, col = colors, lty = c("solid")) #, lty = c("solid", "solid", "solid"))
+    }    
 }
 
-createPlot <- function() {     # Creating plot for paper
+createPlot <- function(field) {     # Creating plot for paper
+  ScopeVBasic("Chl", "A", field, p.range = c(0.05, 0.15, 0.25, 0.35, 0.45), colors = c('black', 'blue', 'red', 'green', 'purple', 'yellow'), print.legend = TRUE)
 }
 
 plotError.correct <- function(org, type, usedTools = current_tools, print.legend = TRUE, main.msg=FALSE, y.lim = FALSE) {

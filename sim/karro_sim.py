@@ -89,6 +89,7 @@ def read_validation_data(input_file, options):
     """Read in and parse data from a specified validation file"""
     O = []
     num_positive = 0    # Wil hold the total number of sequences with poly(A) tails
+    num_negative = 0
     for mult in range(options.multiplier):
         for counter,r in enumerate(SeqIO.parse(input_file, "fasta")):
             if options.sim_size > 0 and counter >= options.sim_size:
@@ -171,24 +172,25 @@ def read_validation_data(input_file, options):
                 tmp += r.seq[last:-1]
                 s = "".join([choice(tmp) for i in range(len(r.seq))])
                 O.append(ESTFrag(label=str(counter) + ".b", seq_arr = [s], seq_type = ['frag']))
+                num_negative += 1
 
         #shuffle(O)
 
-    return O, num_positive
+    return O, num_positive, num_negative
 
 def real_data(outputFile, DIR, inputFile, options):
     """Convert a validation file to the needed format"""
     with open(DIR + "/" + outputFile, "w") as fp:
-        O, num_positive = read_validation_data(inputFile, options)
+        O, num_positive, num_negative = read_validation_data(inputFile, options)
         for o in O:
             fp.write(o.fastaString())
-    return num_positive
+    return num_positive, num_negative
 
 def timing_data(outputFile, DIR, inputFile, options, n):
     """Create an input file from a validation sequence where we choose n random sequences (with replacement)
     for purposes of checking runtime"""
     with open(DIR + "/" + outputFile, "w") as fp:
-        O, num_positive = read_validation_data(inputFile, options)
+        O, num_positive, num_negative = read_validation_data(inputFile, options)
         seqs = []
         IDmap = {}
         for i in range(n):
@@ -210,7 +212,7 @@ def hasOverlap(i1, i2):
 def mean(A, error_val = -1):
     return scipy.mean(A) if len(A) > 0 else error_val
 
-def analysis(records, analysis_function, polyType, options, num_positive):
+def analysis(records, analysis_function, polyType, options, num_positive, num_negative):
     """Read in the results of one of the tools and calculate certain statistics.
        fn is a function for reading in the results (e.g. cleangingTools.parseScopaInfo)
        """
@@ -255,8 +257,9 @@ def analysis(records, analysis_function, polyType, options, num_positive):
                 trim.append(left_trim[-1] + right_trim[-1])
 
     fn = num_positive - tp
-    sensitivity = float(tp) / (tp + fn) if tp + fn > 0 else -1
-    specificity = float(tn) / (tn + fp) if tn + fp > 0 else -1
+    tn = num_negative - fp
+    sensitivity = float(tp) / (tp + fn) if num_positive > 0 else -1
+    specificity = float(tn) / (tn + fp) if num_negative > 0 else -1
 
     total_pos = tp + fn
     total_neg = fp + tn
@@ -302,7 +305,7 @@ def launch_jobs(options):
         if (options.Liang_data):
             shutil.copyfile(options.Liang_data, options.outputDir + "/" + options.sim_file)
         elif (options.real):
-            num_posiive = real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
+            num_positive, num_negative = real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
         else:
             simulation(*[getattr(options,v) for v in ["sim_file", "n", "outputDir", "basis", "polyType"]]);
     
@@ -371,39 +374,39 @@ def basicSim(options, args):
 
     if options.SCOPA:
         time, results = scopaCollect(SCOPA, not options.keep_files)
-        stats = analysis(results, parseScopaInfo, options.polyType, options, num_positive)
+        stats = analysis(results, parseScopaInfo, options.polyType, options, num_positive, num_negative)
         printResults(fp, "SCOPA", [time] + stats);
     if options.SCOPABW:
         time, results = scopaCollect(SCOPABW, not options.keep_files)
-        stats = analysis(results, parseScopaInfo, options.polyType, options, num_positive)
+        stats = analysis(results, parseScopaInfo, options.polyType, options, num_positive, num_negative)
         printResults(fp, "SCOPABW", [time] + stats);
     if options.CLEAN:
         time, results = seqCleanCollect(CLEAN, not options.keep_files)
-        stats = analysis(results, parseCleanInfo, options.polyType, options, num_positive)
+        stats = analysis(results, parseCleanInfo, options.polyType, options, num_positive, num_negative)
         printResults(fp, "CLEAN", [time] + stats)
     if options.TRIM:
         time, results = seqTrimCollect(TRIM, not options.keep_files)
-        stats = analysis(results, parseTrimInfo, options.polyType, options, num_positive)
+        stats = analysis(results, parseTrimInfo, options.polyType, options, num_positive, num_negative)
         printResults(fp, "TRIM", [time] + stats)  
     if options.POLY:
         time, results = polyCollect(POLY, not options.keep_files)
-        stats = analysis(results, parsePolyInfo, options.polyType, options, num_positive)
+        stats = analysis(results, parsePolyInfo, options.polyType, options, num_positive, num_negative)
         printResults(fp, "POLY", [time] + stats)
     if options.TRIMEST:
         time, results = trimestCollect(TRIMEST, not options.keep_files)
-        stats = analysis(results, parseTrimestInfo, options.polyType, options, num_positive)
+        stats = analysis(results, parseTrimestInfo, options.polyType, options, num_positive, num_negative)
         printResults(fp, "TRIMEST", [time] + stats)
     if options.BASICTOOL1:
         time, results = basicCollect(BASICTOOL1, not options.keep_files)
-        stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive)
+        stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive, num_negative)
         printResults(fp, "BASICTOOL1", [time] + stats)
     if options.BASICTOOL2:
         time, results = basicCollect(BASICTOOL2, not options.keep_files)
-        stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive)
+        stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive, num_negative)
         printResults(fp, "BASICTOOL2", [time] + stats)
     if options.BASICTOOL3:
         time, results = basicCollect(BASICTOOL3, not options.keep_files)
-        stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive)
+        stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive, num_negative)
         printResults(fp, "BASICTOOL3", [time] + stats)
 
 def scopeVbasic(options, args):
@@ -413,11 +416,11 @@ def scopeVbasic(options, args):
         fp.write(('{:<5}'*2).format('p', 'e') + ('{:<14}'*len(column_names)).format(*column_names) + "\n")
 
     error_start, error_stop, error_step = 0, 0.1006, 0.01
-    p_start, p_stop, p_step = 0, 0.10006, 0.001
+    p_start, p_stop, p_step = 0.15, 0.35, 0.01
 
     for error in arange(error_start, error_stop, error_step):
         options.error_rate = error
-        num_positive = real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
+        num_positive, num_negative = real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
 
     
         m = None
@@ -427,7 +430,7 @@ def scopeVbasic(options, args):
                            minIdentity=options.minIdentity, terminate=options.terminate, no_retrain=True, front_gap=options.front_gap, poly=options.poly, numTrain=options.numTrain) if options.SCOPA else None
 
         time, results = scopaCollect(SCOPA, False)
-        stats = analysis(results, parseScopaInfo, options.polyType, options, num_positive)
+        stats = analysis(results, parseScopaInfo, options.polyType, options, num_positive, num_negative)
         fp.write(('{:<15}'*2).format(-1, error))
         printResults(fp, "SCOPA", [time] + stats);
 
@@ -436,7 +439,7 @@ def scopeVbasic(options, args):
             BASICTOOL = basicJob(options.sim_file, outputFile = "BASIC.out.%s" % options.id, DIR = options.outputDir, base_type = options.polyType, min_length = 20, p = p, format = 'fasta', end = '3' if options.polyType == 'A' else '5', terminate=options.terminate) if options.BASICTOOL else None
 
             time, results = basicCollect(BASICTOOL, not options.keep_files)
-            stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive)
+            stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive, num_negative)
             fp.write(('{:<15}'*2).format(round(p,3), error))
             printResults(fp, "BASICTOOL", [time] + stats)
 
