@@ -111,7 +111,7 @@ plotError.sen <- function(org, type, usedTools = current_tools, print.legend = T
   }
 }
 
-ScopeVBasic <- function(org, type, field, x.lim = NA, y.lim = NA, p.range = NA, colors = NA) {    # Must have length(p.range) == length(colors)-1
+ScopeVBasic <- function(org, type, field, x.lim = NA, y.lim = NA, p.range = NA, colors = NA, xlab = NA, ylab = NA, main = NA) {    # Must have length(p.range) == length(colors)-1
     s <- paste(org, type, "svb", "out", sep = ".")
     F <- read.table(s, header = TRUE)
 
@@ -124,20 +124,13 @@ ScopeVBasic <- function(org, type, field, x.lim = NA, y.lim = NA, p.range = NA, 
     if (length(y.lim) == 1) {
         y.lim = range(F[,field])
     }
-    
-    plot(c(), c(), xlim = x.lim, ylim = y.lim, xlab = "Base Call Error Rate", main="NEED LABEL")
 
-    
-<<<<<<< HEAD
+    plot(c(), c(), xlim = x.lim, ylim = y.lim, xlab = ifelse(is.na(xlab), "Base Call Error Rate", xlab), ylab = ylab, main=main)
+
     if (length(p.range) == 1) {
       p.range = sort(unique(F$p))
     } 
-=======
-    if (is.na(p.range)) {
-        p.range = sort(unique(F$p))
-    }
-    
->>>>>>> 3709b9c1e738e49ebe4e6edde465fdfd89733db2
+
     # Print SCOPE
     lines(F[F$name=='SCOPA', 'e'], F[F$name=='SCOPA', field], col = colors[1])
 
@@ -150,8 +143,11 @@ ScopeVBasic <- function(org, type, field, x.lim = NA, y.lim = NA, p.range = NA, 
     
     names = c('SCOPE', lapply(p.range, function(x) sprintf("Basic (p = %5.2f)", x)))
     print(colors)
-    legend(x = "topleft", legend = names, col = colors, lty = c("solid")) #, lty = c("solid", "solid", "solid"))
+    legend(x = "bottomleft", legend = names, col = colors, lty = c("solid")) #, lty = c("solid", "solid", "solid"))
       
+}
+
+createPlot <- function() {     # Creating plot for paper
 }
 
 plotError.correct <- function(org, type, usedTools = current_tools, print.legend = TRUE, main.msg=FALSE, y.lim = FALSE) {
