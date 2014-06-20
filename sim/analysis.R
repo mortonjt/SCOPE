@@ -114,6 +114,7 @@ plotError.sen <- function(org, type, usedTools = current_tools, print.legend = T
 ScopeVBasic <- function(org, type, field, x.lim = NA, y.lim = NA, p.range = c(NA), colors = c(NA), xlab = NA, ylab = NA, main = NA, print.legend = FALSE) {    # Must have length(p.range) == length(colors)-1
     s <- paste(org, type, "svb", "out", sep = ".")
     F <- read.table(s, header = TRUE)
+    return(F)
 
     F <- F[F$name %in% c('BASICTOOL', 'SCOPA'),]
     
@@ -142,21 +143,25 @@ ScopeVBasic <- function(org, type, field, x.lim = NA, y.lim = NA, p.range = c(NA
 
     i = 2
     for (p in p.range) {
-      print(F[F$name=='BASICTOOL' & F$p==p,'e'])
       lines(F[F$name=='BASICTOOL' & F$p==p,'e'], F[F$name=='BASICTOOL' & F$p==p,field], col = colors[i])
-      return(F)
       i = i + 1
     }
     
     names = c('SCOPE', lapply(p.range, function(x) sprintf("Basic (p = %5.2f)", x)))
     
-    if (print.legend) {
-      legend(x = "bottomleft", legend = names, col = colors, lty = c("solid")) #, lty = c("solid", "solid", "solid"))
+    if (!is.na(print.legend)) {
+      legend(x = print.legend, legend = names, col = colors, lty = c("solid")) #, lty = c("solid", "solid", "solid"))
     }    
 }
 
-createPlot <- function(field) {     # Creating plot for paper
-  ScopeVBasic("Chl", "A", field, p.range = c(0.05, 0.15, 0.25, 0.35, 0.45), colors = c('black', 'blue', 'red', 'green', 'purple', 'yellow'), print.legend = TRUE)
+r <- c(0.15, .20, 0.25, 0.3)
+colors <- c('black', 'blue', 'red', 'green', 'purple', 'yellow')
+createPlot <- function() {     # Creating plot for paper
+  par(mfrow = c(2,2))
+  ScopeVBasic("Chl", "T", 'sens', p.range = r, colors = colors, print.legend = "bottomleft", y.lim = c(0.95,1), ylab = "sensitivity")
+  ScopeVBasic("Chl", "T", 'spec', p.range = r, colors = colors, ylab = "specificity")
+  ScopeVBasic("Chl", "T", 'pct_crt', p.range = r, colors = colors, ylab = "Percent boundaries correct")
+  ScopeVBasic("Chl", "T", 'avg_trim', p.range = r, colors = colors, ylab = "Avg. Trim error")
 }
 
 plotError.correct <- function(org, type, usedTools = current_tools, print.legend = TRUE, main.msg=FALSE, y.lim = FALSE) {

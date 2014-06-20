@@ -416,7 +416,7 @@ def scopeVbasic(options, args):
         fp.write(('{:<5}'*2).format('p', 'e') + ('{:<14}'*len(column_names)).format(*column_names) + "\n")
 
     error_start, error_stop, error_step = 0, 0.1006, 0.01
-    p_start, p_stop, p_step = 0.15, 0.35, 0.01
+    p_start, p_stop, p_step = 0.05, 0.56, 0.05
 
     for error in arange(error_start, error_stop, error_step):
         options.error_rate = error
@@ -442,6 +442,40 @@ def scopeVbasic(options, args):
             stats = analysis(results, parseBasicInfo, options.polyType, options, num_positive, num_negative)
             fp.write(('{:<15}'*2).format(round(p,3), error))
             printResults(fp, "BASICTOOL", [time] + stats)
+
+def scopeVbasicHMM(options, args):
+    
+    fp = sys.stdout if options.output == None else open(options.output, "w")
+    if not options.Header_off:
+        fp.write(('{:<5}'*2).format('p', 'e') + ('{:<14}'*len(column_names)).format(*column_names) + "\n")
+
+    error_start, error_stop, error_step = 0, 0.1006, 0.001
+    p_start, p_stop, p_step = 0.05, 0.56, 0.05
+
+    for error in arange(error_start, error_stop, error_step):
+        print("ERROR: %5.2f" % (error))
+        options.error_rate = error
+        num_positive, num_negative = real_data(*[getattr(options,v) for v in ["sim_file", "outputDir", "real"]], options=options)
+
+    
+        m = None
+        w,b,x = options.params;
+
+        SCOPA2   = scopaJob(inputFile = options.sim_file, e = None, t = options.polyType, w =w, d = None, m = m, b = b, x = 0, n = None, k=None, outputFile = "SCOPA.out.%s" % options.id, DIR=options.outputDir, 
+                           minIdentity=options.minIdentity, terminate=options.terminate, no_retrain=True, front_gap=options.front_gap, poly=options.poly, numTrain=options.numTrain) if options.SCOPA else None
+        SCOPA   = scopaJob(inputFile = options.sim_file, e = None, t = options.polyType, w =w, d = None, m = m, b = b, x = x, n = None, k=None, outputFile = "SCOPA.out.%s" % options.id, DIR=options.outputDir, 
+                           minIdentity=options.minIdentity, terminate=options.terminate, no_retrain=True, front_gap=options.front_gap, poly=options.poly, numTrain=options.numTrain) if options.SCOPA else None
+
+        time, results = scopaCollect(SCOPA, False)
+        stats = analysis(results, parseScopaInfo, options.polyType, options, num_positive, num_negative)
+        fp.write(('{:<15}'*2).format(-1, error))
+        printResults(fp, "SCOPA", [time] + stats);
+
+
+        time, results = scopaCollect(SCOPA, False)
+        stats = analysis(results, parseScopaInfo, options.polyType, options, num_positive, num_negative)
+        fp.write(('{:<15}'*2).format(-1, error))
+        printResults(fp, "SCOPA0", [time] + stats);
 
 
 def error_variation(options, args):
@@ -788,6 +822,7 @@ if __name__ == "__main__":
     toolGroup.add_option("--PTL", "--post_tail_length", action="store_const", const = "endLengthSim", dest="run_type", help="Effect of variation of the post-tail fragment length", default= "basicSim")
     toolGroup.add_option("--len_test", action="store_const", const="lenTest", dest="run_type", help="Effect of variation of both the post-tail fragment length and the poly(A) length", default= "basicSim")
     toolGroup.add_option("--SB", "--scopeVbasic", action="store_const", const="scopeVbasic", dest = "run_type", help = "Test SCOPE against Basic at various levels of p")
+    toolGroup.add_option("--SBH", "--scopeVbasicHMM", action="store_const", const="scopeVbasicHMM", dest = "run_type", help = "Test SCOPE against Basic at various levels of p")
 
     scopeGroup = OptionGroup(parser, "SCOPE++ parameters")
     parser.add_option_group(scopeGroup)
