@@ -6,7 +6,11 @@ Then run
 `./bootstrap`
 
 Then run
-```./configure; make; make install```
+```./configure; make; sudo make install```
+
+If you don't have permission, then create a directory and run the following command
+
+```./configure --prefix=<your directory>; make; sudo make install```
 
 Parameters
 ==========
