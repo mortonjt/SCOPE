@@ -40,9 +40,6 @@
 /* Define to 1 if the system has the type `_Bool'. */
 /* #undef HAVE__BOOL */
 
-/* Name of package */
-#define PACKAGE "scope"
-
 /* Define to the address where bug reports for this package should be sent. */
 #define PACKAGE_BUGREPORT "mortonjt@miamioh.edu"
 
@@ -63,9 +60,6 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
-
-/* Version number of package */
-#define VERSION "1.0"
 
 /* Define to `__inline__' or `__inline' if that's what the C compiler
    calls it, or to nothing if 'inline' is not supported under any name.  */
