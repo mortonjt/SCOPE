@@ -1,3 +1,5 @@
+SCOPE++ is a C++-based program for accurately identifying homopolymer in cDNA sequences using Hidden Markov Models. This can be extended to trimming poly(A)/poly(T) tails, or identifying A,C,G,T,or N homopolymer sequences.
+
 Installation
 ============
 First, make sure that autotools is installed.
