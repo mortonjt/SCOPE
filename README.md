@@ -1,4 +1,5 @@
-==Installation==
+Installation
+============
 First, make sure that autotools is installed.
 Then run
 
@@ -7,7 +8,8 @@ Then run
 Then run
 ```./configure; make; make install```
 
-==Command Line Parameters==
+Parameters
+==========
 
 ```
     Input:
