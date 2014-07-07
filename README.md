@@ -1,5 +1,15 @@
+==Installation==
+First, make sure that autotools is installed.
+Then run
+
+`./bootstrap`
+
+Then run
+```./configure; make; make install```
+
+==Command Line Parameters==
+
 ```
-Command line parameters: 
     Input:
        -i [input file] (required) 
           the fastq input file or the fasta input file
