@@ -8,7 +8,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE([no-define])
-
+#m4_include([m4/ax_pthread.m4])
 # Checks for programs.
 AC_PROG_CXXCPP
 AC_PROG_CXX
@@ -25,7 +25,11 @@ AC_PROG_CC
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lpthread':
 AC_CHECK_LIB([pthread], [main])
-
+#ACX_PTHREAD
+#LIBS="$PTHREAD_LIBS $LIBS"
+#CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+CXXFLAGS="$CXXFLAGS -pthread"
+LDFLAGS="$LDFLAGS -pthread"
 # Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS([stdlib.h unistd.h])
