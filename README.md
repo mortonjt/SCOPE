@@ -3,9 +3,6 @@ SCOPE++ is a C++-based program for accurately identifying homopolymer in cDNA se
 Installation
 ============
 First, make sure that autotools is installed.
-Then run
-
-`./bootstrap`
 
 Then run
 ```./configure; make; sudo make install```
