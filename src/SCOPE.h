@@ -34,7 +34,8 @@ class SCOPE{
 		  	  	  	  	  ostream& tabout,     //Output tab
 						  Viterbi & modelA,
 						  Viterbi & modelT);
-
+  static vector<string> readFastaBlock(istream& f);
+  static vector<string> readFastqBlock(istream& f);
   static vector<Alignment> viterbiCoord(Viterbi& mle,
 					string obs);
 
@@ -47,12 +48,12 @@ class SCOPE{
   //File management
   /*Writes sequence to fasta/fastq and a tab delimited file*/
   static void writeRecord(vector<Alignment>& a,
-						 string d,
-						 string ns,
-						 string nq,
-						 ostream& fastaout,
-						 ostream& tabout,
-						 bool isTrash);
+			  string d,
+			  string ns,
+			  string nq,
+			  ostream& fastaout,
+			  ostream& tabout,
+			  bool isTrash);
   /*Formatting helper methods*/
   static void formatAlignments(vector<Alignment>& alignments);
   static void formatSequence(vector<Alignment>& p,string s,string q, string& ns, string& nq);

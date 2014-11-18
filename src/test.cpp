@@ -7,35 +7,6 @@
 //#include <algorithm>
 #include "SCOPE.h"
 using namespace std;
-void writeFastaBlock(string s,ofstream& o){
-	int i = 60;
-	while(i<(int)s.length()){
-		string str1 = s.substr(0,i);
-		string str2 = s.substr(i,s.length());
-		s = str1+'\n'+str2;
-		i+=i+1;
-	}
-	o<<s;
-}
-//Reads in one fasta sequence at a time
-string readFastaBlock(istream& f){
-	string tmp;
-	string cur_seq;
-	getline(f,tmp);
-	if(tmp[0]=='>'){
-		getline(f,tmp);
-	}
-	while(!f.eof() and tmp[0]!='>'){
-		cur_seq+=tmp;
-		getline(f,tmp);
-	}
-
-	if(f.eof()){
-		return "END_OF_FILE";
-	}else{
-		return cur_seq;
-	}
-}
 
 
 void test_build_ghmm(){
@@ -66,9 +37,9 @@ void test_train(){
 	ifstream fin("polyA_test_accuracy.fa");
 
 	for(int i = 0; i<100; i++){
-		string s = readFastaBlock(fin);
-		//cout<<s<<endl<<endl;
-		g->train(s);
+	  string s = SCOPE::readFastaBlock(fin);
+	  //cout<<s<<endl<<endl;
+	  g->train(s);
 	}
 	cout<<"Finalize"<<endl;
 	g->finalize_parameters();
@@ -161,8 +132,8 @@ void test_ctor(){
 	ifstream fin("polyA_test_accuracy.fa");
 
 	for(int i = 0; i<500; i++){
-		string s = readFastaBlock(fin);
-		g->train(s);
+	  string s = SCOPE::readFastaBlock(fin);
+	  g->train(s);
 	}
 	cout<<"Finalize"<<endl;
 	g->finalize_parameters();
@@ -333,6 +304,21 @@ void test_baumWelch(){
 		SCOPE::baumWelchTrain(model,trainSeqs);
 	model.print_parameters();
 */
+}
+
+void test_read(){
+  std::stringstream ss;
+  ss<<">testing\n\n"<<
+    <<"atgcggtaggcccttgatgcggtaggcccttg\n\n"
+    <<">testing2\n\n"<<
+    <<"aatgcggtaggcccttatgcggtaggcccttggaaaaaaaaaaaaaaaaa\n\n";
+  vector<string> read1 = SCOPE::readFastaBlock(ss);
+  assert(read[0]=="testing");
+  assert(read[2]=="atgcggtaggcccttgatgcggtaggcccttg");
+  vector<string> read2 = SCOPE::readFastaBlock(ss);;
+  assert(read[0]=="testing2");
+  assert(read[2]=="aatgcggtaggcccttatgcggtaggcccttggaaaaaaaaaaaaaaaaa");
+
 }
 
 int main(){

@@ -358,29 +358,25 @@ bool writeFastaBlock(vector<string> read,ostream& o){
 
 //Reads in one fasta sequence at a time
 //pair<string,string> = <description,sequence>
-vector<string> readFastaBlock(istream& f){
+vector<string> SCOPE::readFastaBlock(istream& f){
 	vector<string> pair;
 	if(f.eof()){
 		pair.push_back("END_OF_FILE");
 		pair.push_back("END_OF_FILE");
 		return pair;
 	}else{
-		string tmp;
-		string cur_des;
-		string cur_seq;
+		string tmp = "";
+		string cur_des = "";
+		string cur_seq = "";
 		getline(f,cur_des);
 		getline(f,tmp);
 		//std::cout<<"Description: "<<cur_des<<std::endl;
 		cur_seq+=tmp;
-		//std::cout<<tmp<<std::endl;
-		while(!f.eof() and f.peek()!='>'){
-			while(tmp=="\n");
-			getline(f,tmp);
-			cur_seq+=tmp;
-			//std::cout<<tmp<<std::endl;
-		}
-		
-
+		while(!f.eof() and f.peek()!='>' and getline(f,tmp)){
+		  if(tmp!=""){
+		    cur_seq+=tmp;
+		  }
+		}		
 		pair.push_back(cur_des);
 		pair.push_back(cur_seq);
 		return pair;
@@ -388,7 +384,7 @@ vector<string> readFastaBlock(istream& f){
 }
 
 //quadruple<string,string,string,string> = <description, sequence, description, quality>
-vector<string> readFastqBlock(istream& f){
+vector<string> SCOPE::readFastqBlock(istream& f){
 	vector<string> quadruple;
 	if(f.eof()){
 		return vector<string>(4,"END_OF_FILE");
@@ -405,10 +401,10 @@ vector<string> readFastqBlock(istream& f){
 	//tmp<<f;quadruple.push_back(tmp);
 	//quadruple.push_back(block);
 	if(quadruple[0]=="" or
-			quadruple[1]=="" or
-			quadruple[2]=="" or
-			quadruple[3]=="")
-		return vector<string>(4,"END_OF_FILE");
+	   quadruple[1]=="" or
+	   quadruple[2]=="" or
+	   quadruple[3]=="")
+	  return vector<string>(4,"END_OF_FILE");
 	return quadruple;
 }
 
@@ -805,9 +801,9 @@ void SCOPE::writeRecord(vector<Alignment>& alns,
 
 
 void SCOPE::detect(ifstream& f,
-				   ostream& fastaout,
-				   ostream& tabout,
-				   Viterbi & mle){
+		   ostream& fastaout,
+		   ostream& tabout,
+		   Viterbi & mle){
 	//bool isPoly = false;
 	//int i = 0;
 	stringstream ss;
@@ -830,7 +826,8 @@ void SCOPE::detect(ifstream& f,
 				d = read[0]; s = read[1]; q = read[3];}
 			////////////////////////////////
 		}
-
+		//std::cout<<d<<std::endl;
+		//std::cout<<s<<std::endl;
 		if(isLower(s[0]))
 			s = toUpper(s);
 		string ns,nq;
@@ -855,10 +852,10 @@ void SCOPE::detect(ifstream& f,
 }
 
 void SCOPE::trimProcess(ifstream& in,
-						ostream& fastaout,
-						ostream& tabout,
-						Viterbi & modelA,
-						Viterbi & modelT){
+			ostream& fastaout,
+			ostream& tabout,
+			Viterbi & modelA,
+			Viterbi & modelT){
 	stringstream ss;
 	vector<string> read;
 	string tmp,s,d,q;
